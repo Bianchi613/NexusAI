@@ -1,6 +1,6 @@
 # NexusAI
 
-`NexusAI` e um backend de pipeline para portal de noticias com IA. O fluxo principal ja esta funcional: coleta noticias de `api`, `rss` e `json_feed`, filtra o material bruto, evita duplicacoes, envia o conteudo para o Ollama local e salva a materia gerada no PostgreSQL com categoria, tags, imagens e vinculo com a fonte original.
+`NexusAI` e um backend de pipeline para portal de noticias com IA. O fluxo principal ja esta funcional: coleta noticias de `api`, `rss` e `json_feed`, filtra o material bruto, evita duplicacoes, envia o conteudo para o Ollama local e salva a materia gerada no PostgreSQL com categoria, tags, imagens, videos e vinculo com a fonte original.
 
 ## Visao Geral
 
@@ -36,6 +36,7 @@ O nucleo do projeto esta quase completo e ja cobre o basico combinado.
 - filtro leve de qualidade para evitar lixo obvio
 - geracao de titulo, resumo, corpo, categoria e tags
 - persistencia de multiplas imagens em `raw_articles` e `generated_articles`
+- persistencia de videos em `raw_articles` e `generated_articles`
 - persistencia da materia gerada em `generated_articles`
 - relacao entre materia e fonte original em `generated_article_sources`
 - criacao automatica de categorias e tags
@@ -89,6 +90,7 @@ app/
   db.py
   models.py
   collectors/
+    json_feed.py
     news_api.py
     rss.py
   ai/
@@ -148,6 +150,10 @@ Atualmente o projeto possui varias RSS configuradas por padrao:
 - `Ars Technica`
 - `ScienceDaily`
 
+JSON Feed configurado por padrao:
+
+- `Daring Fireball`
+
 Observacoes importantes:
 
 - alguns feeds podem falhar temporariamente ou responder de forma inconsistente
@@ -167,7 +173,7 @@ O projeto aplica um filtro propositalmente leve antes de salvar a noticia bruta:
 - bloqueia prefixos como `saiba como`, `confira` e `entenda como`
 - remove parametros de rastreamento da URL
 - deduplica por URL normalizada, titulo normalizado e hash de conteudo
-- limpa HTML, imagens, tabelas e blocos estruturados antes da geracao
+- limpa HTML, imagens, videos, tabelas e blocos estruturados antes da geracao
 
 As regras ficam principalmente em [app/core/article_filters.py](/d:/Projetos/Nexus%20AI/app/core/article_filters.py:1).
 
@@ -236,9 +242,9 @@ Esse comando:
 2. coleta noticias das fontes configuradas
 3. deduplica o lote
 4. salva as noticias brutas
-5. preserva os links de imagens encontrados nas fontes
+5. preserva os links de imagens e videos encontrados nas fontes
 6. envia os artigos selecionados ao Ollama
-7. salva as materias geradas com categoria, tags e imagens
+7. salva as materias geradas com categoria, tags, imagens e videos
 8. registra falhas por artigo, se houver
 
 ## Consultas Uteis
@@ -246,7 +252,14 @@ Esse comando:
 Ver noticias brutas:
 
 ```sql
-SELECT id, source_id, original_title, original_url, original_image_urls, published_at
+SELECT
+  id,
+  source_id,
+  original_title,
+  original_url,
+  original_image_urls,
+  original_video_urls,
+  published_at
 FROM raw_articles
 ORDER BY id DESC;
 ```
@@ -261,6 +274,7 @@ SELECT
   ga.summary,
   c.name AS category,
   ga.image_urls,
+  ga.video_urls,
   ARRAY_REMOVE(ARRAY_AGG(t.name ORDER BY t.id), NULL) AS tags,
   ga.created_at
 FROM generated_articles ga
@@ -319,7 +333,9 @@ python -m app.main
 - hoje o pipeline opera no modo mais simples: uma noticia bruta gera uma materia
 - os formatos padrao tratados pelo sistema agora sao `api`, `rss` e `json_feed`
 - `raw_articles.original_image_urls` guarda as imagens encontradas na fonte
+- `raw_articles.original_video_urls` guarda os videos encontrados na fonte
 - `generated_articles.image_urls` herda as imagens da noticia base usada na geracao
+- `generated_articles.video_urls` herda os videos da noticia base usada na geracao
 - a parte estrutural do backend ja esta praticamente pronta para a proxima etapa
 
 ## Proximos Passos
