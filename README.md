@@ -1,56 +1,56 @@
 # NexusAI
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/48ff92cf-e21d-484e-830f-bb04dbd83b42" />
 
+`NexusAI` e um backend de pipeline para portal de noticias com IA. O fluxo principal ja esta funcional: coleta noticias de RSS e API, filtra o material bruto, evita duplicacoes, envia o conteudo para o Ollama local e salva a materia gerada no PostgreSQL com categoria, tags e vinculo com a fonte original.
 
-`NexusAI` e um pipeline simples para coleta de noticias, geracao de materia com IA local e salvamento estruturado no banco.
+## Visao Geral
 
-O objetivo atual do projeto e entregar o fluxo basico:
+O projeto foi pensado para operar neste fluxo:
 
-1. buscar noticias em APIs ou RSS
-2. salvar em `raw_articles`
-3. evitar duplicadas
-4. enviar a noticia bruta para o Ollama local
-5. gerar uma materia estruturada
-6. salvar em `generated_articles` com categoria, tags e relacao com a fonte usada
-
-## Visao geral
-
-O diagrama abaixo representa a ideia central do pipeline do projeto, da coleta da noticia bruta ate o salvamento da materia gerada:
+1. coletar noticias de APIs e RSS
+2. salvar noticias brutas em `raw_articles`
+3. evitar duplicidade por URL, titulo normalizado e hash de conteudo
+4. gerar materia estruturada com o Ollama local
+5. salvar a materia final em `generated_articles`
+6. registrar a relacao entre materia gerada e noticia bruta em `generated_article_sources`
+7. registrar falhas por artigo em `processing_failures`, sem abortar a rodada inteira
 
 ![Fluxo basico do NexusAI](docs/EstruturaBasica.png)
 
-## Estado atual
+## Status do Nucleo
+
+O nucleo do projeto esta quase completo e ja cobre o basico combinado.
 
 ### Ja funciona
 
 - conexao com PostgreSQL
-- criacao automatica das tabelas
-- comunicacao com Ollama local
+- criacao automatica das tabelas via SQLAlchemy
+- leitura de configuracao por `.env`
+- integracao com Ollama local
 - prompt externo em `prompts/article.txt`
-- coleta por API HTTP
 - coleta por RSS com varias fontes nacionais e internacionais
-- persistencia em `raw_articles`
+- suporte a coleta por API HTTP quando `NEWS_API_KEY` estiver configurada
+- persistencia de noticias brutas em `raw_articles`
 - deduplicacao por `original_url`, titulo normalizado e `content_hash`
-- filtro de qualidade minima na coleta
-- limpeza de HTML e ruido antes de salvar texto bruto
-- geracao de materia com categoria e tags
-- persistencia em `generated_articles`
-- relacao entre materia gerada e fonte usada em `generated_article_sources`
-- tratamento de falha por artigo sem abortar a execucao inteira
+- limpeza de HTML, tabelas, ruido e texto malformado antes da geracao
+- filtro leve de qualidade para evitar lixo obvio
+- geracao de titulo, resumo, corpo, categoria e tags
+- persistencia da materia gerada em `generated_articles`
+- relacao entre materia e fonte original em `generated_article_sources`
+- criacao automatica de categorias e tags
+- tratamento de erro por artigo sem derrubar o lote inteiro
 - registro de falhas em `processing_failures`
-- normalizacao editorial basica de titulos gerados
+- rotacao de fontes na selecao do lote
 
 ### O que ainda falta
 
-- configurar uma `NEWS_API_KEY` real para coleta por API
-- adicionar mais provedores de API alem do formato atual
-- melhorar a deduplicacao semantica entre noticias parecidas
-- criar testes automatizados
-- adicionar migrations de banco
-- expor uma API propria do sistema para consulta e revisao
-- melhorar ainda mais a qualidade editorial de titulos e resumos gerados
+- melhorar a qualidade editorial de alguns titulos e resumos gerados
+- adicionar testes automatizados
+- criar migrations de banco
+- expor uma API propria para consulta, revisao e publicacao
+- evoluir a deduplicacao para casos semanticamente parecidos
+- adicionar um painel ou frontend para revisao
 
-## Fluxo atual
+## Fluxo Atual
 
 ```text
 API / RSS
@@ -59,6 +59,8 @@ collectors
    ->
 raw_articles
    ->
+filtros e deduplicacao
+   ->
 Ollama local
    ->
 generated_articles
@@ -66,7 +68,7 @@ generated_articles
 generated_article_sources
 ```
 
-Em caso de erro no Ollama para um artigo especifico:
+Em caso de erro ao processar um artigo:
 
 ```text
 raw_article
@@ -76,7 +78,7 @@ falha por artigo
 processing_failures
 ```
 
-## Estrutura
+## Estrutura do Projeto
 
 ```text
 app/
@@ -99,13 +101,9 @@ requirements.txt
 .env
 ```
 
-## Banco de dados
+## Banco de Dados
 
-O projeto usa PostgreSQL.
-<img width="1219" height="1290" alt="image" src="https://github.com/user-attachments/assets/eb21006d-89ae-486a-aa95-96170ac37ce7" />
-
-
-O modelo abaixo resume as tabelas e relacoes principais do portal de noticias com IA:
+O projeto usa PostgreSQL como banco principal.
 
 ![Modelo de banco de dados do NexusAI](docs/BancoDeDados.png)
 
@@ -120,9 +118,9 @@ Tabelas principais do fluxo atual:
 - `processing_failures`
 - `users`
 
-## Fontes configuradas
+## Fontes Configuradas
 
-Atualmente o projeto consegue trabalhar com varias fontes RSS por padrao, incluindo:
+Atualmente o projeto possui varias RSS configuradas por padrao:
 
 - `NASA RSS`
 - `NASA Technology`
@@ -142,32 +140,35 @@ Atualmente o projeto consegue trabalhar com varias fontes RSS por padrao, inclui
 - `CNN`
 - `NYT HomePage`
 - `TechCrunch`
+- `The Verge`
 - `Wired`
 - `Ars Technica`
 - `ScienceDaily`
 
-Alguns feeds podem falhar temporariamente ou responder bloqueio HTTP. O coletor RSS ignora esses casos sem derrubar o lote inteiro.
+Observacoes importantes:
 
-Sem `NEWS_API_KEY`, a parte de API HTTP nao roda, mas o pipeline continua funcional via RSS.
+- alguns feeds podem falhar temporariamente ou responder de forma inconsistente
+- o coletor RSS ignora falhas isoladas e continua a rodada
+- sem `NEWS_API_KEY`, a parte de API HTTP nao roda, mas o pipeline continua funcional por RSS
 
-## Filtro atual
+## Filtros e Deduplicacao
 
-O projeto aplica um filtro basico antes de salvar a noticia bruta:
+O projeto aplica um filtro propositalmente leve antes de salvar a noticia bruta:
 
 - exige titulo e URL validos
 - exige tamanho minimo de titulo e conteudo
-- exige score minimo de qualidade
+- aplica score minimo de qualidade
+- bloqueia termos promocionais ou claramente fracos
+- bloqueia prefixos como `saiba como`, `confira` e `entenda como`
 - remove parametros de rastreamento da URL
-- bloqueia termos promocionais ou de baixo valor
-- bloqueia prefixos como `saiba como`, `confira`, `entenda como`
-- deduplica por URL normalizada, titulo normalizado e `content_hash`
-- limpa HTML, imagens, links e blocos estruturados antes de salvar texto
+- deduplica por URL normalizada, titulo normalizado e hash de conteudo
+- limpa HTML, imagens, tabelas e blocos estruturados antes da geracao
 
-Essas regras ficam principalmente em [app/core/article_filters.py](/d:/Projetos/Nexus%20AI/app/core/article_filters.py:1).
+As regras ficam principalmente em [app/core/article_filters.py](/d:/Projetos/Nexus%20AI/app/core/article_filters.py:1).
 
 ## Configuracao
 
-Exemplo de `.env` atual:
+Exemplo de `.env` alinhado com o estado atual do projeto:
 
 ```env
 APP_NAME=NexusAI
@@ -187,7 +188,7 @@ RSS_DEFAULT_FEED_URL=https://www.nasa.gov/feed/
 RSS_DEFAULT_SOURCE_NAME=NASA RSS
 RSS_PAGE_SIZE=10
 RSS_DEFAULT_FEEDS=NASA RSS|https://www.nasa.gov/feed/;NASA Technology|https://www.nasa.gov/technology/feed/;NASA Artemis|https://www.nasa.gov/missions/artemis/feed/;ESA Science|https://sci.esa.int/newssyndication/rss/sciweb.xml;Camara Ultimas Noticias|https://www.camara.leg.br/noticias/rss/ultimas-noticias;Camara Politica|https://www.camara.leg.br/noticias/rss/dinamico/POLITICA;Senado Noticias|https://www12.senado.leg.br/noticias/rss;IBGE Agencia de Noticias|https://agenciadenoticias.ibge.gov.br/agencia-rss;G1|https://g1.globo.com/rss/g1/;Tecnoblog|https://tecnoblog.net/feed/;Canaltech|https://canaltech.com.br/rss/;Olhar Digital|https://olhardigital.com.br/feed/;InfoMoney|https://www.infomoney.com.br/feed/;Exame|https://exame.com/feed/;BBC News|http://feeds.bbci.co.uk/news/rss.xml;CNN|http://rss.cnn.com/rss/edition.rss;NYT HomePage|https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml;TechCrunch|https://techcrunch.com/feed/;The Verge|https://www.theverge.com/rss/index.xml;Wired|https://www.wired.com/feed/rss;Ars Technica|http://feeds.arstechnica.com/arstechnica/index;ScienceDaily|https://www.sciencedaily.com/rss/all.xml
-PIPELINE_MAX_ITEMS_PER_RUN=3
+PIPELINE_MAX_ITEMS_PER_RUN=12
 MIN_TITLE_LENGTH=20
 MIN_CONTENT_LENGTH=40
 MIN_QUALITY_SCORE=1
@@ -205,7 +206,7 @@ Instalacao:
 python -m pip install -r requirements.txt
 ```
 
-Dependencias atuais:
+Principais dependencias:
 
 - `SQLAlchemy`
 - `psycopg[binary]`
@@ -224,14 +225,61 @@ Esse comando:
 
 1. inicializa o banco
 2. coleta noticias das fontes configuradas
-3. salva em `raw_articles`
-4. envia para o Ollama
-5. salva as materias geradas no banco
-6. registra falhas por artigo em `processing_failures`, se houver
+3. deduplica o lote
+4. salva as noticias brutas
+5. envia os artigos selecionados ao Ollama
+6. salva as materias geradas
+7. registra falhas por artigo, se houver
 
-## Teste com banco limpo
+## Consultas Uteis
 
-Para testar o fluxo do zero, voce pode limpar o conteudo operacional e rodar novamente:
+Ver noticias brutas:
+
+```sql
+SELECT id, source_id, original_title, original_url, published_at
+FROM raw_articles
+ORDER BY id DESC;
+```
+
+Ver materias geradas com fonte, categoria e tags:
+
+```sql
+SELECT
+  ga.id,
+  ns.name AS source_name,
+  ga.title,
+  ga.summary,
+  c.name AS category,
+  ARRAY_REMOVE(ARRAY_AGG(t.name ORDER BY t.id), NULL) AS tags,
+  ga.created_at
+FROM generated_articles ga
+JOIN generated_article_sources gas ON gas.generated_article_id = ga.id
+JOIN raw_articles ra ON ra.id = gas.raw_article_id
+JOIN news_sources ns ON ns.id = ra.source_id
+LEFT JOIN categories c ON c.id = ga.category_id
+LEFT JOIN LATERAL json_array_elements_text(ga.tags) AS tag_id_txt ON true
+LEFT JOIN tags t ON t.id = tag_id_txt::int
+GROUP BY
+  ga.id,
+  ns.name,
+  ga.title,
+  ga.summary,
+  c.name,
+  ga.created_at
+ORDER BY ga.id DESC;
+```
+
+Ver falhas de processamento:
+
+```sql
+SELECT id, raw_article_id, stage, error_type, message, created_at
+FROM processing_failures
+ORDER BY id DESC;
+```
+
+## Teste com Banco Limpo
+
+Para testar o fluxo do zero:
 
 ```sql
 TRUNCATE TABLE
@@ -253,26 +301,19 @@ python -m app.main
 
 ## Observacoes
 
-- sem `NEWS_API_KEY`, a coleta por API nao roda
-- o pipeline continua funcional via RSS
-- o limite `PIPELINE_MAX_ITEMS_PER_RUN` controla quantos artigos entram em cada rodada do Ollama
-- o timeout do Ollama foi aumentado para reduzir abortos em artigos lentos
+- `PIPELINE_MAX_ITEMS_PER_RUN` controla quantos artigos entram em cada rodada do Ollama
+- o valor padrao atual esta em `12`
+- `OLLAMA_TIMEOUT_SECONDS` foi aumentado para reduzir abortos em artigos lentos
 - falhas de um artigo nao interrompem a rodada inteira
-- hoje o pipeline trabalha no modo mais simples: uma noticia bruta gera uma materia
+- hoje o pipeline opera no modo mais simples: uma noticia bruta gera uma materia
+- a parte estrutural do backend ja esta praticamente pronta para a proxima etapa
 
-## Proximo alvo
+## Proximos Passos
 
-Fechar bem o basico combinado:
+Os proximos ganhos mais valiosos para o projeto sao:
 
-1. coletar noticias reais
-2. salvar no banco sem duplicar
-3. gerar materia com Ollama
-4. salvar categoria, tags e vinculo com a fonte
-5. registrar falhas sem perder a rodada
-
-Depois disso, o proximo nivel natural e:
-
-- melhorar a qualidade editorial
-- suportar mais fontes e APIs
-- criar API de consulta e revisao
-- preparar frontend ou painel
+1. melhorar a qualidade editorial do texto gerado
+2. criar API de consulta e revisao
+3. adicionar testes automatizados
+4. preparar painel ou frontend
+5. evoluir publicacao e fluxo de revisao
