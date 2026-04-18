@@ -1,4 +1,6 @@
 # NexusAI
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/48ff92cf-e21d-484e-830f-bb04dbd83b42" />
+
 
 `NexusAI` e um pipeline simples para coleta de noticias, geracao de materia com IA local e salvamento estruturado no banco.
 
@@ -79,6 +81,8 @@ requirements.txt
 ## Banco de dados
 
 O projeto usa PostgreSQL.
+<img width="1219" height="1290" alt="image" src="https://github.com/user-attachments/assets/eb21006d-89ae-486a-aa95-96170ac37ce7" />
+
 
 Tabelas principais do fluxo atual:
 
