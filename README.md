@@ -24,6 +24,7 @@ O nucleo do projeto esta quase completo e ja cobre o basico combinado.
 
 - conexao com PostgreSQL
 - criacao automatica das tabelas via SQLAlchemy
+- base inicial de migrations com Alembic
 - leitura de configuracao por `.env`
 - integracao com Ollama local
 - prompt externo em `prompts/article.txt`
@@ -89,6 +90,11 @@ app/
   config.py
   db.py
   models.py
+alembic.ini
+migrations/
+  env.py
+  versions/
+    20260418_0001_initial_schema.py
   collectors/
     json_feed.py
     news_api.py
@@ -223,10 +229,35 @@ python -m pip install -r requirements.txt
 
 Principais dependencias:
 
+- `alembic`
 - `SQLAlchemy`
 - `psycopg[binary]`
 - `requests`
 - `python-dotenv`
+
+## Migrations
+
+O projeto agora usa Alembic para versionar o schema do banco.
+
+Instalar dependencias:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Criar ou atualizar o banco ate a ultima versao:
+
+```bash
+alembic upgrade head
+```
+
+Se o seu banco atual ja foi criado manualmente e ja esta compativel com o schema atual, o caminho mais seguro e marcar a migration inicial sem recriar as tabelas:
+
+```bash
+alembic stamp head
+```
+
+Depois disso, os proximos ajustes de schema devem virar novas migrations.
 
 ## Execucao
 
@@ -235,6 +266,11 @@ Para rodar o pipeline:
 ```bash
 python -m app.main
 ```
+
+Observacao:
+
+- o `app.main` nao faz mais criacao automatica de schema
+- antes de rodar em um banco novo, execute `alembic upgrade head`
 
 Esse comando:
 
@@ -321,6 +357,7 @@ RESTART IDENTITY CASCADE;
 Depois execute:
 
 ```bash
+alembic upgrade head
 python -m app.main
 ```
 
