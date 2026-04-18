@@ -99,7 +99,7 @@ class Settings:
             ),
         )
     )
-    pipeline_max_items_per_run: int = int(os.getenv("PIPELINE_MAX_ITEMS_PER_RUN", "3"))
+    pipeline_max_items_per_run: int = int(os.getenv("PIPELINE_MAX_ITEMS_PER_RUN", "12"))
     ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "180"))
     min_title_length: int = int(os.getenv("MIN_TITLE_LENGTH", "20"))
     min_content_length: int = int(os.getenv("MIN_CONTENT_LENGTH", "40"))
