@@ -47,6 +47,7 @@ class Settings:
     rss_default_feed_url: str = os.getenv("RSS_DEFAULT_FEED_URL", "https://www.nasa.gov/feed/")
     rss_default_source_name: str = os.getenv("RSS_DEFAULT_SOURCE_NAME", "NASA RSS")
     rss_page_size: int = int(os.getenv("RSS_PAGE_SIZE", "10"))
+    pipeline_max_items_per_run: int = int(os.getenv("PIPELINE_MAX_ITEMS_PER_RUN", "1"))
     ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
 
 

@@ -32,6 +32,8 @@ class NewsPipeline:
             collected_articles = []
             collected_articles.extend(self.api_collector.collect(session))
             collected_articles.extend(self.rss_collector.collect(session))
+            if settings.pipeline_max_items_per_run > 0:
+                collected_articles = collected_articles[: settings.pipeline_max_items_per_run]
             stored_articles = [self._persist_raw_article(session, article) for article in collected_articles]
             session.commit()
 
