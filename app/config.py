@@ -90,6 +90,7 @@ class Settings:
                 "Exame|https://exame.com/feed/;"
                 "BBC News|http://feeds.bbci.co.uk/news/rss.xml;"
                 "CNN|http://rss.cnn.com/rss/edition.rss;"
+                "The Guardian World|https://www.theguardian.com/world/rss;"
                 "NYT HomePage|https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml;"
                 "TechCrunch|https://techcrunch.com/feed/;"
                 "The Verge|https://www.theverge.com/rss/index.xml;"
