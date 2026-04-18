@@ -3,6 +3,7 @@ __pycache__/
 *.pyo
 *.pyd
 *.db
+.pytest_cache/
 .env
 .env.local
 venv/

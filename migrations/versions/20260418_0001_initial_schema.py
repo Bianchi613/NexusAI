@@ -22,8 +22,8 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
         sa.Column("name", sa.String(length=100), nullable=False),
         sa.Column("slug", sa.String(length=120), nullable=False),
-        sa.UniqueConstraint("name"),
-        sa.UniqueConstraint("slug"),
+        sa.UniqueConstraint("name", name="uq_categories_name"),
+        sa.UniqueConstraint("slug", name="uq_categories_slug"),
     )
 
     op.create_table(
@@ -42,8 +42,8 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
         sa.Column("name", sa.String(length=100), nullable=False),
         sa.Column("slug", sa.String(length=120), nullable=False),
-        sa.UniqueConstraint("name"),
-        sa.UniqueConstraint("slug"),
+        sa.UniqueConstraint("name", name="uq_tags_name"),
+        sa.UniqueConstraint("slug", name="uq_tags_slug"),
     )
 
     op.create_table(
@@ -52,12 +52,12 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=150), nullable=False),
         sa.Column("email", sa.String(length=200), nullable=False),
         sa.Column("password_hash", sa.Text(), nullable=False),
-        sa.Column("role", sa.String(length=20), nullable=False),
+        sa.Column("role", sa.String(length=20), nullable=False, server_default=sa.text("'cliente'")),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.CheckConstraint("role IN ('cliente', 'revisor')", name="ck_users_role"),
-        sa.UniqueConstraint("email"),
+        sa.UniqueConstraint("email", name="uq_users_email"),
     )
 
     op.create_table(
@@ -87,7 +87,7 @@ def upgrade() -> None:
         sa.Column("summary", sa.Text(), nullable=True),
         sa.Column("body", sa.Text(), nullable=False),
         sa.Column("category_id", sa.Integer(), nullable=True),
-        sa.Column("status", sa.String(length=20), nullable=False),
+        sa.Column("status", sa.String(length=20), nullable=False, server_default=sa.text("'nao_revisada'")),
         sa.Column("ai_model", sa.String(length=100), nullable=True),
         sa.Column("prompt_version", sa.String(length=50), nullable=True),
         sa.Column("tags", sa.JSON(), nullable=False, server_default=sa.text("'[]'::json")),

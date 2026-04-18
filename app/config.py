@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass, field
 from typing import Optional
+from urllib.parse import urlsplit, urlunsplit
 
 try:
     from dotenv import load_dotenv
@@ -26,7 +27,12 @@ def _require_env(name: str) -> str:
 
 def _normalize_database_url(value: str) -> str:
     if value.startswith("postgresql://"):
-        return value.replace("postgresql://", "postgresql+psycopg://", 1)
+        normalized = value.replace("postgresql://", "postgresql+psycopg://", 1)
+        parts = urlsplit(normalized)
+        if parts.hostname == "localhost":
+            netloc = parts.netloc.replace("localhost", "127.0.0.1", 1)
+            return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+        return normalized
     return value
 
 
@@ -110,6 +116,10 @@ class Settings:
         )
     )
     pipeline_max_items_per_run: int = int(os.getenv("PIPELINE_MAX_ITEMS_PER_RUN", "12"))
+    pipeline_candidate_pool_multiplier: int = int(os.getenv("PIPELINE_CANDIDATE_POOL_MULTIPLIER", "3"))
+    max_articles_per_source_per_run: int = int(os.getenv("MAX_ARTICLES_PER_SOURCE_PER_RUN", "3"))
+    max_articles_per_category_per_run: int = int(os.getenv("MAX_ARTICLES_PER_CATEGORY_PER_RUN", "2"))
+    min_distinct_categories_per_run: int = int(os.getenv("MIN_DISTINCT_CATEGORIES_PER_RUN", "2"))
     ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "180"))
     min_title_length: int = int(os.getenv("MIN_TITLE_LENGTH", "20"))
     min_content_length: int = int(os.getenv("MIN_CONTENT_LENGTH", "40"))

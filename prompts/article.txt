@@ -16,8 +16,11 @@ Regras obrigatorias:
 - se houver divergencia entre fontes, priorizar o que for consistente entre elas
 - manter tom neutro, informativo e impessoal
 - nao usar opinioes, adjetivos exagerados ou linguagem sensacionalista
-- escrever title, summary e body em portugues do Brasil
+- escrever todos os campos do JSON em portugues do Brasil
+- title, summary e body devem sempre sair em portugues do Brasil, mesmo quando a fonte original estiver em ingles
+- category e tags tambem devem ser devolvidas em portugues do Brasil
 - nao deixar title em ingles quando houver forma natural em portugues
+- se o titulo original estiver em ingles, traduza de forma natural e jornalistica para portugues do Brasil
 
 Categoria:
 - sugerir apenas uma categoria

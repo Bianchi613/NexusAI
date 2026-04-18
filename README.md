@@ -23,8 +23,7 @@ O nucleo do projeto esta quase completo e ja cobre o basico combinado.
 ### Ja funciona
 
 - conexao com PostgreSQL
-- criacao automatica das tabelas via SQLAlchemy
-- base inicial de migrations com Alembic
+- schema versionado com Alembic
 - leitura de configuracao por `.env`
 - integracao com Ollama local
 - prompt externo em `prompts/article.txt`
@@ -49,7 +48,6 @@ O nucleo do projeto esta quase completo e ja cobre o basico combinado.
 
 - melhorar a qualidade editorial de alguns titulos e resumos gerados
 - adicionar testes automatizados
-- criar migrations de banco
 - expor uma API propria para consulta, revisao e publicacao
 - evoluir a deduplicacao para casos semanticamente parecidos
 - adicionar um painel ou frontend para revisao
@@ -90,11 +88,6 @@ app/
   config.py
   db.py
   models.py
-alembic.ini
-migrations/
-  env.py
-  versions/
-    20260418_0001_initial_schema.py
   collectors/
     json_feed.py
     news_api.py
@@ -104,10 +97,19 @@ migrations/
   core/
     article_filters.py
     pipeline.py
+alembic.ini
+migrations/
+  env.py
+  script.py.mako
+  versions/
+    20260418_0001_initial_schema.py
+scripts/
+  migrations.py
 prompts/
   article.txt
 docs/
 requirements.txt
+pytest.ini
 .env
 ```
 
@@ -230,6 +232,7 @@ python -m pip install -r requirements.txt
 Principais dependencias:
 
 - `alembic`
+- `pytest`
 - `SQLAlchemy`
 - `psycopg[binary]`
 - `requests`
@@ -258,6 +261,20 @@ alembic stamp head
 ```
 
 Depois disso, os proximos ajustes de schema devem virar novas migrations.
+
+Helper do projeto para comandos mais comuns:
+
+```bash
+python scripts/migrations.py current
+python scripts/migrations.py history
+python scripts/migrations.py upgrade
+python scripts/migrations.py stamp
+python scripts/migrations.py revision "add_new_field" --autogenerate
+```
+
+Observacao:
+
+- use `revision --autogenerate` so quando o banco local estiver alinhado com `head`
 
 ## Execucao
 
@@ -361,6 +378,20 @@ alembic upgrade head
 python -m app.main
 ```
 
+## Testes
+
+Base inicial de testes automatizados:
+
+- `tests/test_article_filters.py`
+- `tests/test_json_feed_collector.py`
+- `tests/test_rss_collector.py`
+
+Para rodar:
+
+```bash
+python -m pytest
+```
+
 ## Observacoes
 
 - `PIPELINE_MAX_ITEMS_PER_RUN` controla quantos artigos entram em cada rodada do Ollama
@@ -381,6 +412,6 @@ Os proximos ganhos mais valiosos para o projeto sao:
 
 1. melhorar a qualidade editorial do texto gerado
 2. criar API de consulta e revisao
-3. adicionar testes automatizados
+3. expandir a cobertura dos testes automatizados
 4. preparar painel ou frontend
 5. evoluir publicacao e fluxo de revisao
