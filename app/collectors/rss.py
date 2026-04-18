@@ -14,12 +14,10 @@ from app.models import NewsSource, RawArticle
 
 class RSSCollector:
     def collect(self, session: Session) -> List[RawArticle]:
+        self._ensure_default_sources(session)
         sources = session.scalars(
             select(NewsSource).where(NewsSource.is_active.is_(True), NewsSource.source_type == "rss")
         ).all()
-
-        if not sources:
-            sources = [self._get_or_create_default_source(session)]
 
         raw_articles: List[RawArticle] = []
         for source in sources:
@@ -27,29 +25,40 @@ class RSSCollector:
 
         return raw_articles
 
-    def _get_or_create_default_source(self, session: Session) -> NewsSource:
-        source = session.scalar(
-            select(NewsSource).where(NewsSource.base_url == settings.rss_default_feed_url)
-        )
-        if source is not None:
-            return source
+    def _ensure_default_sources(self, session: Session) -> None:
+        configured_feeds = list(settings.rss_default_feeds)
 
-        source = NewsSource(
-            name=settings.rss_default_source_name,
-            base_url=settings.rss_default_feed_url,
-            source_type="rss",
-            is_active=True,
-        )
-        session.add(source)
+        if not configured_feeds:
+            configured_feeds = [(settings.rss_default_source_name, settings.rss_default_feed_url)]
+
+        for name, url in configured_feeds:
+            source = session.scalar(select(NewsSource).where(NewsSource.base_url == url))
+            if source is not None:
+                continue
+
+            session.add(
+                NewsSource(
+                    name=name,
+                    base_url=url,
+                    source_type="rss",
+                    is_active=True,
+                )
+            )
+
         session.flush()
-        return source
 
     def _fetch_source_articles(self, source: NewsSource) -> List[RawArticle]:
         response = requests.get(source.base_url, timeout=30)
         response.raise_for_status()
 
-        root = ET.fromstring(response.content)
+        try:
+            root = ET.fromstring(self._sanitize_xml(response.content))
+        except ET.ParseError:
+            return []
+
         items = root.findall("./channel/item")
+        if not items:
+            items = root.findall(".//item")
 
         collected: List[RawArticle] = []
         for item in items[: settings.rss_page_size]:
@@ -105,3 +114,8 @@ class RSSCollector:
             return parsedate_to_datetime(value)
         except (TypeError, ValueError, IndexError):
             return None
+
+    def _sanitize_xml(self, content: bytes) -> bytes:
+        text = content.decode("utf-8", errors="replace")
+        text = text.replace("&nbsp;", " ")
+        return text.encode("utf-8")

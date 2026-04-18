@@ -35,6 +35,24 @@ def _parse_csv(value: Optional[str], default: str = "") -> list[str]:
     return [item.strip() for item in raw_value.split(",") if item.strip()]
 
 
+def _parse_feed_entries(value: Optional[str], default: str = "") -> list[tuple[str, str]]:
+    raw_value = value if value is not None else default
+    entries: list[tuple[str, str]] = []
+
+    for chunk in raw_value.split(";"):
+        item = chunk.strip()
+        if not item or "|" not in item:
+            continue
+
+        name, url = item.split("|", 1)
+        name = name.strip()
+        url = url.strip()
+        if name and url:
+            entries.append((name, url))
+
+    return entries
+
+
 @dataclass
 class Settings:
     app_name: str = os.getenv("APP_NAME", "NexusAI")
@@ -52,6 +70,17 @@ class Settings:
     rss_default_feed_url: str = os.getenv("RSS_DEFAULT_FEED_URL", "https://www.nasa.gov/feed/")
     rss_default_source_name: str = os.getenv("RSS_DEFAULT_SOURCE_NAME", "NASA RSS")
     rss_page_size: int = int(os.getenv("RSS_PAGE_SIZE", "10"))
+    rss_default_feeds: list[tuple[str, str]] = field(
+        default_factory=lambda: _parse_feed_entries(
+            os.getenv("RSS_DEFAULT_FEEDS"),
+            (
+                "NASA RSS|https://www.nasa.gov/feed/;"
+                "NASA Technology|https://www.nasa.gov/technology/feed/;"
+                "NASA Artemis|https://www.nasa.gov/missions/artemis/feed/;"
+                "ESA Science|https://sci.esa.int/newssyndication/rss/sciweb.xml"
+            ),
+        )
+    )
     pipeline_max_items_per_run: int = int(os.getenv("PIPELINE_MAX_ITEMS_PER_RUN", "1"))
     ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
     min_title_length: int = int(os.getenv("MIN_TITLE_LENGTH", "20"))
