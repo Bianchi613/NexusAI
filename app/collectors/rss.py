@@ -1,4 +1,3 @@
-import hashlib
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from email.utils import parsedate_to_datetime
@@ -9,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.article_filters import build_content_hash, is_article_candidate, normalize_url
 from app.models import NewsSource, RawArticle
 
 
@@ -61,14 +61,23 @@ class RSSCollector:
 
     def _normalize_item(self, source_id: int, item: ET.Element) -> Optional[RawArticle]:
         title = self._text(item.find("title"))
-        url = self._text(item.find("link"))
+        url = normalize_url(self._text(item.find("link")))
         description = self._text(item.find("description"))
         author = self._text(item.find("author")) or self._text(item.find("{http://purl.org/dc/elements/1.1/}creator"))
         external_id = self._text(item.find("guid")) or url
         published_at = self._parse_datetime(self._text(item.find("pubDate")))
 
         content = description or title
-        if not title or not url:
+        if not is_article_candidate(
+            title,
+            description,
+            content,
+            url,
+            blocked_terms=settings.blocked_title_terms,
+            min_title_length=settings.min_title_length,
+            min_content_length=settings.min_content_length,
+            min_quality_score=settings.min_quality_score,
+        ):
             return None
 
         return RawArticle(
@@ -80,7 +89,7 @@ class RSSCollector:
             original_content=content,
             original_author=author,
             published_at=published_at,
-            content_hash=self._build_content_hash(url, title, content),
+            content_hash=build_content_hash(url, title, content),
         )
 
     def _text(self, node: Optional[ET.Element]) -> Optional[str]:
@@ -96,7 +105,3 @@ class RSSCollector:
             return parsedate_to_datetime(value)
         except (TypeError, ValueError, IndexError):
             return None
-
-    def _build_content_hash(self, original_url: str, title: str, content: Optional[str]) -> str:
-        base = f"{original_url}|{title}|{content or ''}"
-        return hashlib.sha256(base.encode("utf-8")).hexdigest()

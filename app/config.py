@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 try:
@@ -30,6 +30,11 @@ def _normalize_database_url(value: str) -> str:
     return value
 
 
+def _parse_csv(value: Optional[str], default: str = "") -> list[str]:
+    raw_value = value if value is not None else default
+    return [item.strip() for item in raw_value.split(",") if item.strip()]
+
+
 @dataclass
 class Settings:
     app_name: str = os.getenv("APP_NAME", "NexusAI")
@@ -49,6 +54,22 @@ class Settings:
     rss_page_size: int = int(os.getenv("RSS_PAGE_SIZE", "10"))
     pipeline_max_items_per_run: int = int(os.getenv("PIPELINE_MAX_ITEMS_PER_RUN", "1"))
     ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
+    min_title_length: int = int(os.getenv("MIN_TITLE_LENGTH", "20"))
+    min_content_length: int = int(os.getenv("MIN_CONTENT_LENGTH", "80"))
+    min_quality_score: int = int(os.getenv("MIN_QUALITY_SCORE", "2"))
+    blocked_title_terms: list[str] = field(
+        default_factory=lambda: _parse_csv(
+            os.getenv("BLOCKED_TITLE_TERMS"),
+            "webinar,register,sponsored,opinion,advertisement,jobs",
+        )
+    )
+    allowed_categories: list[str] = field(
+        default_factory=lambda: _parse_csv(
+            os.getenv("ALLOWED_CATEGORIES"),
+            "Geral,Tecnologia,Ciencia,Espaco,Negocios,Politica,Saude,Esportes",
+        )
+    )
+    max_tags_per_article: int = int(os.getenv("MAX_TAGS_PER_ARTICLE", "5"))
 
 
 settings = Settings()

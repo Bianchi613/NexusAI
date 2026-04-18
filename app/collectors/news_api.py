@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.article_filters import build_content_hash, is_article_candidate, normalize_url
 from app.models import NewsSource, RawArticle
 
 
@@ -77,23 +78,35 @@ class NewsAPICollector:
         return params
 
     def _normalize_article(self, source_id: int, article: dict[str, Any]) -> Optional[RawArticle]:
-        original_url = article.get("url")
-        original_title = article.get("title")
+        original_url = normalize_url(article.get("url"))
+        original_title = (article.get("title") or "").strip()
+        original_description = self._clean_text(article.get("description"))
+        original_content = self._clean_text(article.get("content"))
+        original_author = self._clean_text(article.get("author"))
 
-        if not original_url or not original_title:
+        if not is_article_candidate(
+            original_title,
+            original_description,
+            original_content,
+            original_url,
+            blocked_terms=settings.blocked_title_terms,
+            min_title_length=settings.min_title_length,
+            min_content_length=settings.min_content_length,
+            min_quality_score=settings.min_quality_score,
+        ):
             return None
 
         published_at = self._parse_datetime(article.get("publishedAt"))
-        content_hash = self._build_content_hash(original_url, original_title, article.get("content"))
+        content_hash = build_content_hash(original_url, original_title, original_content or original_description)
 
         return RawArticle(
             source_id=source_id,
             external_id=original_url,
             original_title=original_title,
             original_url=original_url,
-            original_description=article.get("description"),
-            original_content=article.get("content"),
-            original_author=article.get("author"),
+            original_description=original_description,
+            original_content=original_content,
+            original_author=original_author,
             original_image_url=article.get("urlToImage"),
             published_at=published_at,
             content_hash=content_hash,
@@ -108,6 +121,8 @@ class NewsAPICollector:
         except ValueError:
             return None
 
-    def _build_content_hash(self, original_url: str, title: str, content: Optional[str]) -> str:
-        base = f"{original_url}|{title}|{content or ''}"
-        return hashlib.sha256(base.encode("utf-8")).hexdigest()
+    def _clean_text(self, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = " ".join(value.split())
+        return cleaned or None
