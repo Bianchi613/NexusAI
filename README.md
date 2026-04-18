@@ -1,12 +1,12 @@
 # NexusAI
 
-`NexusAI` e um backend de pipeline para portal de noticias com IA. O fluxo principal ja esta funcional: coleta noticias de RSS e API, filtra o material bruto, evita duplicacoes, envia o conteudo para o Ollama local e salva a materia gerada no PostgreSQL com categoria, tags e vinculo com a fonte original.
+`NexusAI` e um backend de pipeline para portal de noticias com IA. O fluxo principal ja esta funcional: coleta noticias de `api`, `rss` e `json_feed`, filtra o material bruto, evita duplicacoes, envia o conteudo para o Ollama local e salva a materia gerada no PostgreSQL com categoria, tags, imagens e vinculo com a fonte original.
 
 ## Visao Geral
 
 O projeto foi pensado para operar neste fluxo:
 
-1. coletar noticias de APIs e RSS
+1. coletar noticias de APIs, RSS e JSON Feed
 2. salvar noticias brutas em `raw_articles`
 3. evitar duplicidade por URL, titulo normalizado e hash de conteudo
 4. gerar materia estruturada com o Ollama local
@@ -28,12 +28,14 @@ O nucleo do projeto esta quase completo e ja cobre o basico combinado.
 - integracao com Ollama local
 - prompt externo em `prompts/article.txt`
 - coleta por RSS com varias fontes nacionais e internacionais
+- suporte estrutural a JSON Feed
 - suporte a coleta por API HTTP quando `NEWS_API_KEY` estiver configurada
 - persistencia de noticias brutas em `raw_articles`
 - deduplicacao por `original_url`, titulo normalizado e `content_hash`
 - limpeza de HTML, tabelas, ruido e texto malformado antes da geracao
 - filtro leve de qualidade para evitar lixo obvio
 - geracao de titulo, resumo, corpo, categoria e tags
+- persistencia de multiplas imagens em `raw_articles` e `generated_articles`
 - persistencia da materia gerada em `generated_articles`
 - relacao entre materia e fonte original em `generated_article_sources`
 - criacao automatica de categorias e tags
@@ -53,7 +55,7 @@ O nucleo do projeto esta quase completo e ja cobre o basico combinado.
 ## Fluxo Atual
 
 ```text
-API / RSS
+API / RSS / JSON Feed
    ->
 collectors
    ->
@@ -150,6 +152,8 @@ Observacoes importantes:
 
 - alguns feeds podem falhar temporariamente ou responder de forma inconsistente
 - o coletor RSS ignora falhas isoladas e continua a rodada
+- JSON Feed ja e suportado como formato nativo e pode ser configurado por `JSON_DEFAULT_FEEDS`
+- o projeto ja inclui como exemplo de `json_feed` a fonte `Daring Fireball`
 - sem `NEWS_API_KEY`, a parte de API HTTP nao roda, mas o pipeline continua funcional por RSS
 
 ## Filtros e Deduplicacao
@@ -188,7 +192,11 @@ NEWS_API_PAGE_SIZE=10
 RSS_DEFAULT_FEED_URL=https://www.nasa.gov/feed/
 RSS_DEFAULT_SOURCE_NAME=NASA RSS
 RSS_PAGE_SIZE=10
+JSON_FEED_DEFAULT_URL=https://daringfireball.net/feeds/json
+JSON_FEED_DEFAULT_SOURCE_NAME=Daring Fireball
+JSON_FEED_PAGE_SIZE=10
 RSS_DEFAULT_FEEDS=NASA RSS|https://www.nasa.gov/feed/;NASA Technology|https://www.nasa.gov/technology/feed/;NASA Artemis|https://www.nasa.gov/missions/artemis/feed/;ESA Science|https://sci.esa.int/newssyndication/rss/sciweb.xml;Camara Ultimas Noticias|https://www.camara.leg.br/noticias/rss/ultimas-noticias;Camara Politica|https://www.camara.leg.br/noticias/rss/dinamico/POLITICA;Senado Noticias|https://www12.senado.leg.br/noticias/rss;IBGE Agencia de Noticias|https://agenciadenoticias.ibge.gov.br/agencia-rss;G1|https://g1.globo.com/rss/g1/;Tecnoblog|https://tecnoblog.net/feed/;Canaltech|https://canaltech.com.br/rss/;Olhar Digital|https://olhardigital.com.br/feed/;InfoMoney|https://www.infomoney.com.br/feed/;Exame|https://exame.com/feed/;BBC News|http://feeds.bbci.co.uk/news/rss.xml;CNN|http://rss.cnn.com/rss/edition.rss;The Guardian World|https://www.theguardian.com/world/rss;NYT HomePage|https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml;TechCrunch|https://techcrunch.com/feed/;The Verge|https://www.theverge.com/rss/index.xml;Wired|https://www.wired.com/feed/rss;Ars Technica|http://feeds.arstechnica.com/arstechnica/index;ScienceDaily|https://www.sciencedaily.com/rss/all.xml
+JSON_DEFAULT_FEEDS=Daring Fireball|https://daringfireball.net/feeds/json
 PIPELINE_MAX_ITEMS_PER_RUN=12
 MIN_TITLE_LENGTH=20
 MIN_CONTENT_LENGTH=40
@@ -228,16 +236,17 @@ Esse comando:
 2. coleta noticias das fontes configuradas
 3. deduplica o lote
 4. salva as noticias brutas
-5. envia os artigos selecionados ao Ollama
-6. salva as materias geradas
-7. registra falhas por artigo, se houver
+5. preserva os links de imagens encontrados nas fontes
+6. envia os artigos selecionados ao Ollama
+7. salva as materias geradas com categoria, tags e imagens
+8. registra falhas por artigo, se houver
 
 ## Consultas Uteis
 
 Ver noticias brutas:
 
 ```sql
-SELECT id, source_id, original_title, original_url, published_at
+SELECT id, source_id, original_title, original_url, original_image_urls, published_at
 FROM raw_articles
 ORDER BY id DESC;
 ```
@@ -251,6 +260,7 @@ SELECT
   ga.title,
   ga.summary,
   c.name AS category,
+  ga.image_urls,
   ARRAY_REMOVE(ARRAY_AGG(t.name ORDER BY t.id), NULL) AS tags,
   ga.created_at
 FROM generated_articles ga
@@ -307,6 +317,9 @@ python -m app.main
 - `OLLAMA_TIMEOUT_SECONDS` foi aumentado para reduzir abortos em artigos lentos
 - falhas de um artigo nao interrompem a rodada inteira
 - hoje o pipeline opera no modo mais simples: uma noticia bruta gera uma materia
+- os formatos padrao tratados pelo sistema agora sao `api`, `rss` e `json_feed`
+- `raw_articles.original_image_urls` guarda as imagens encontradas na fonte
+- `generated_articles.image_urls` herda as imagens da noticia base usada na geracao
 - a parte estrutural do backend ja esta praticamente pronta para a proxima etapa
 
 ## Proximos Passos

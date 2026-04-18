@@ -38,7 +38,7 @@ class User(Base):
 class NewsSource(Base):
     __tablename__ = "news_sources"
     __table_args__ = (
-        CheckConstraint("source_type IN ('api', 'rss', 'site')", name="ck_news_sources_type"),
+        CheckConstraint("source_type IN ('api', 'rss', 'json_feed')", name="ck_news_sources_type"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -85,6 +85,8 @@ class RawArticle(Base):
     original_content: Mapped[Optional[str]] = mapped_column(Text)
     original_author: Mapped[Optional[str]] = mapped_column(String(255))
     original_image_url: Mapped[Optional[str]] = mapped_column(Text)
+    original_image_urls: Mapped[List[str]] = mapped_column(MutableList.as_mutable(JSON), nullable=False, default=list)
+    original_video_urls: Mapped[List[str]] = mapped_column(MutableList.as_mutable(JSON), nullable=False, default=list)
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     content_hash: Mapped[Optional[str]] = mapped_column(String(255))
@@ -112,6 +114,8 @@ class GeneratedArticle(Base):
     ai_model: Mapped[Optional[str]] = mapped_column(String(100))
     prompt_version: Mapped[Optional[str]] = mapped_column(String(50))
     tags: Mapped[List[int]] = mapped_column(MutableList.as_mutable(JSON), nullable=False, default=list)
+    image_urls: Mapped[List[str]] = mapped_column(MutableList.as_mutable(JSON), nullable=False, default=list)
+    video_urls: Mapped[List[str]] = mapped_column(MutableList.as_mutable(JSON), nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))

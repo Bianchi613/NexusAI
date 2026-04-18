@@ -2,7 +2,7 @@ import hashlib
 import html
 import re
 import unicodedata
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
@@ -164,6 +164,161 @@ def normalize_url(value: Optional[str]) -> str:
 def build_content_hash(url: Optional[str], title: Optional[str], content: Optional[str]) -> str:
     base = f"{normalize_url(url)}|{normalize_title(title)}|{normalize_text(content).lower()}"
     return hashlib.sha256(base.encode("utf-8")).hexdigest()
+
+
+def extract_image_urls_from_html(value: Optional[str]) -> list[str]:
+    if not value:
+        return []
+
+    urls = re.findall(r"""<img[^>]+src=["']([^"']+)["']""", value, flags=re.IGNORECASE)
+    return deduplicate_urls(urls)
+
+
+def extract_video_urls_from_html(value: Optional[str]) -> list[str]:
+    if not value:
+        return []
+
+    urls: list[str] = []
+    urls.extend(re.findall(r"""<(?:iframe|video|source)[^>]+src=["']([^"']+)["']""", value, flags=re.IGNORECASE))
+    return deduplicate_urls(urls)
+
+
+def deduplicate_urls(values: list[str]) -> list[str]:
+    unique_urls: list[str] = []
+    seen: set[str] = set()
+
+    for value in values:
+        normalized = normalize_url(value)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        unique_urls.append(normalized)
+
+    return unique_urls
+
+
+def collect_image_urls(*values: Any) -> list[str]:
+    collected: list[str] = []
+
+    for value in values:
+        if not value:
+            continue
+
+        if isinstance(value, str):
+            normalized = normalize_url(value)
+            if normalized:
+                collected.append(normalized)
+            continue
+
+        if isinstance(value, list):
+            collected.extend(collect_image_urls(*value))
+            continue
+
+        if isinstance(value, dict):
+            candidate_keys = (
+                "url",
+                "src",
+                "image",
+                "image_url",
+                "imageUrl",
+                "thumbnail",
+                "thumbnail_url",
+                "thumbnailUrl",
+            )
+            for key in candidate_keys:
+                if key in value:
+                    collected.extend(collect_image_urls(value.get(key)))
+
+    return deduplicate_urls(collected)
+
+
+def collect_video_urls(*values: Any) -> list[str]:
+    collected: list[str] = []
+
+    for value in values:
+        if not value:
+            continue
+
+        if isinstance(value, str):
+            normalized = normalize_url(value)
+            if normalized:
+                collected.append(normalized)
+            continue
+
+        if isinstance(value, list):
+            collected.extend(collect_video_urls(*value))
+            continue
+
+        if isinstance(value, dict):
+            candidate_keys = (
+                "url",
+                "src",
+                "video",
+                "video_url",
+                "videoUrl",
+                "embed",
+                "embed_url",
+                "embedUrl",
+            )
+            for key in candidate_keys:
+                if key in value:
+                    collected.extend(collect_video_urls(value.get(key)))
+
+    return deduplicate_urls(collected)
+
+
+def is_probable_image_url(value: Optional[str]) -> bool:
+    normalized = normalize_url(value)
+    if not normalized:
+        return False
+
+    lowered = normalized.lower()
+    blocked_fragments = (
+        "youtube.com/embed/",
+        "youtube.com/watch",
+        "youtu.be/",
+        ".mp4",
+        ".webm",
+        ".m3u8",
+    )
+    if any(fragment in lowered for fragment in blocked_fragments):
+        return False
+
+    image_markers = (
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp",
+        ".gif",
+        ".bmp",
+        ".svg",
+        ".avif",
+        "/image/",
+        "/images/",
+        "/photo/",
+        "/photos/",
+    )
+    return any(marker in lowered for marker in image_markers)
+
+
+def is_probable_video_url(value: Optional[str]) -> bool:
+    normalized = normalize_url(value)
+    if not normalized:
+        return False
+
+    lowered = normalized.lower()
+    video_markers = (
+        "youtube.com/embed/",
+        "youtube.com/watch",
+        "youtu.be/",
+        "vimeo.com/",
+        ".mp4",
+        ".webm",
+        ".m3u8",
+        "/video/",
+        "/videos/",
+    )
+    return any(marker in lowered for marker in video_markers)
 
 
 def score_article_quality(title: Optional[str], description: Optional[str], content: Optional[str]) -> int:

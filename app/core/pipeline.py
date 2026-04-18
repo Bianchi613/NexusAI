@@ -4,6 +4,7 @@ from typing import List
 import requests
 
 from app.ai.ollama import OllamaClient
+from app.collectors.json_feed import JSONFeedCollector
 from app.collectors.news_api import NewsAPICollector
 from app.collectors.rss import RSSCollector
 from app.config import settings
@@ -17,6 +18,7 @@ class NewsPipeline:
     def __init__(self) -> None:
         self.api_collector = NewsAPICollector()
         self.rss_collector = RSSCollector()
+        self.json_feed_collector = JSONFeedCollector()
         self.ai_client = OllamaClient()
         self.prompt_path = Path("prompts/article.txt")
 
@@ -33,6 +35,7 @@ class NewsPipeline:
             collected_articles = []
             collected_articles.extend(self.api_collector.collect(session))
             collected_articles.extend(self.rss_collector.collect(session))
+            collected_articles.extend(self.json_feed_collector.collect(session))
             collected_articles = self._deduplicate_batch(collected_articles)
             if settings.pipeline_max_items_per_run > 0:
                 collected_articles = self._select_articles_for_run(
@@ -61,6 +64,8 @@ class NewsPipeline:
                         ai_model=settings.ollama_model,
                         prompt_version=payload.prompt_version,
                         tags=tag_ids,
+                        image_urls=list(raw_article.original_image_urls or []),
+                        video_urls=list(raw_article.original_video_urls or []),
                     )
                     session.add(generated_article)
                     session.flush()

@@ -1,4 +1,3 @@
-import hashlib
 from datetime import datetime
 from typing import Any, List, Optional
 from urllib.parse import urlparse
@@ -8,7 +7,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.core.article_filters import build_content_hash, is_article_candidate, normalize_url, sanitize_article_text
+from app.core.article_filters import (
+    build_content_hash,
+    collect_image_urls,
+    collect_video_urls,
+    is_article_candidate,
+    normalize_url,
+    sanitize_article_text,
+)
 from app.models import NewsSource, RawArticle
 
 
@@ -83,6 +89,20 @@ class NewsAPICollector:
         original_description = sanitize_article_text(article.get("description"))
         original_content = sanitize_article_text(article.get("content"))
         original_author = sanitize_article_text(article.get("author"))
+        image_urls = collect_image_urls(
+            article.get("urlToImage"),
+            article.get("image"),
+            article.get("images"),
+            article.get("media"),
+            article.get("enclosures"),
+        )
+        video_urls = collect_video_urls(
+            article.get("video"),
+            article.get("videoUrl"),
+            article.get("videos"),
+            article.get("media"),
+            article.get("enclosures"),
+        )
 
         if not is_article_candidate(
             original_title,
@@ -108,7 +128,9 @@ class NewsAPICollector:
             original_description=original_description,
             original_content=original_content,
             original_author=original_author,
-            original_image_url=article.get("urlToImage"),
+            original_image_url=image_urls[0] if image_urls else None,
+            original_image_urls=image_urls,
+            original_video_urls=video_urls,
             published_at=published_at,
             content_hash=content_hash,
         )

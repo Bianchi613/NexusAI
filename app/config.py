@@ -70,6 +70,9 @@ class Settings:
     rss_default_feed_url: str = os.getenv("RSS_DEFAULT_FEED_URL", "https://www.nasa.gov/feed/")
     rss_default_source_name: str = os.getenv("RSS_DEFAULT_SOURCE_NAME", "NASA RSS")
     rss_page_size: int = int(os.getenv("RSS_PAGE_SIZE", "10"))
+    json_feed_default_url: str = os.getenv("JSON_FEED_DEFAULT_URL", "")
+    json_feed_default_source_name: str = os.getenv("JSON_FEED_DEFAULT_SOURCE_NAME", "JSON Feed")
+    json_feed_page_size: int = int(os.getenv("JSON_FEED_PAGE_SIZE", "10"))
     rss_default_feeds: list[tuple[str, str]] = field(
         default_factory=lambda: _parse_feed_entries(
             os.getenv("RSS_DEFAULT_FEEDS"),
@@ -98,6 +101,12 @@ class Settings:
                 "Ars Technica|http://feeds.arstechnica.com/arstechnica/index;"
                 "ScienceDaily|https://www.sciencedaily.com/rss/all.xml"
             ),
+        )
+    )
+    json_default_feeds: list[tuple[str, str]] = field(
+        default_factory=lambda: _parse_feed_entries(
+            os.getenv("JSON_DEFAULT_FEEDS"),
+            "",
         )
     )
     pipeline_max_items_per_run: int = int(os.getenv("PIPELINE_MAX_ITEMS_PER_RUN", "12"))
