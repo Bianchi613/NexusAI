@@ -1,6 +1,7 @@
-import re
 from pathlib import Path
 from typing import List
+
+import requests
 
 from app.ai.ollama import OllamaClient
 from app.collectors.news_api import NewsAPICollector
@@ -8,8 +9,8 @@ from app.collectors.rss import RSSCollector
 from app.config import settings
 from app.core.article_filters import normalize_label, normalize_title, normalize_url, slugify
 from app.db import get_session
-from app.models import Category, GeneratedArticle, GeneratedArticleSource, RawArticle, Tag
-from sqlalchemy import select
+from app.models import Category, GeneratedArticle, GeneratedArticleSource, ProcessingFailure, RawArticle, Tag
+from sqlalchemy import func, select
 
 
 class NewsPipeline:
@@ -34,7 +35,11 @@ class NewsPipeline:
             collected_articles.extend(self.rss_collector.collect(session))
             collected_articles = self._deduplicate_batch(collected_articles)
             if settings.pipeline_max_items_per_run > 0:
-                collected_articles = collected_articles[: settings.pipeline_max_items_per_run]
+                collected_articles = self._select_articles_for_run(
+                    session,
+                    collected_articles,
+                    settings.pipeline_max_items_per_run,
+                )
             stored_articles = [self._persist_raw_article(session, article) for article in collected_articles]
             session.commit()
 
@@ -42,32 +47,49 @@ class NewsPipeline:
                 if raw_article is None or self._already_generated(session, raw_article.id):
                     continue
 
-                payload = self.ai_client.generate_article(raw_article, prompt_template)
-                category = self._get_or_create_category(session, payload.category)
-                tag_ids = self._get_or_create_tag_ids(session, payload.tags)
+                try:
+                    payload = self.ai_client.generate_article(raw_article, prompt_template)
+                    category = self._get_or_create_category(session, payload.category)
+                    tag_ids = self._get_or_create_tag_ids(session, payload.tags)
 
-                generated_article = GeneratedArticle(
-                    title=payload.title,
-                    summary=payload.summary,
-                    body=payload.body,
-                    category_id=category.id if category else None,
-                    status="nao_revisada",
-                    ai_model=settings.ollama_model,
-                    prompt_version=payload.prompt_version,
-                    tags=tag_ids,
-                )
-                session.add(generated_article)
-                session.flush()
-
-                session.add(
-                    GeneratedArticleSource(
-                        generated_article_id=generated_article.id,
-                        raw_article_id=raw_article.id,
+                    generated_article = GeneratedArticle(
+                        title=payload.title,
+                        summary=payload.summary,
+                        body=payload.body,
+                        category_id=category.id if category else None,
+                        status="nao_revisada",
+                        ai_model=settings.ollama_model,
+                        prompt_version=payload.prompt_version,
+                        tags=tag_ids,
                     )
-                )
-                session.commit()
-                session.refresh(generated_article)
-                generated_articles.append(generated_article)
+                    session.add(generated_article)
+                    session.flush()
+
+                    session.add(
+                        GeneratedArticleSource(
+                            generated_article_id=generated_article.id,
+                            raw_article_id=raw_article.id,
+                        )
+                    )
+                    session.commit()
+                    session.refresh(generated_article)
+                    generated_articles.append(generated_article)
+                except requests.RequestException as exc:
+                    session.rollback()
+                    self._log_processing_failure(session, raw_article, "ollama_generate", exc)
+                    print(
+                        "Falha ao gerar materia para "
+                        f"'{raw_article.original_title}' ({raw_article.original_url}): "
+                        f"{exc.__class__.__name__}: {exc}"
+                    )
+                except Exception as exc:
+                    session.rollback()
+                    self._log_processing_failure(session, raw_article, "pipeline_process", exc)
+                    print(
+                        "Erro inesperado ao processar "
+                        f"'{raw_article.original_title}' ({raw_article.original_url}): "
+                        f"{exc.__class__.__name__}: {exc}"
+                    )
 
         return generated_articles
 
@@ -163,3 +185,61 @@ class NewsPipeline:
             unique_articles.append(article)
 
         return unique_articles
+
+    def _select_articles_for_run(self, session, articles: List[RawArticle], limit: int) -> List[RawArticle]:
+        if limit <= 0 or len(articles) <= limit:
+            return articles
+
+        by_source: dict[int, List[RawArticle]] = {}
+        source_order: List[int] = []
+
+        for article in articles:
+            if article.source_id not in by_source:
+                by_source[article.source_id] = []
+                source_order.append(article.source_id)
+            by_source[article.source_id].append(article)
+
+        if not source_order:
+            return []
+
+        generated_count = session.scalar(select(func.count()).select_from(GeneratedArticle)) or 0
+        rotation = generated_count % len(source_order)
+        rotated_source_order = source_order[rotation:] + source_order[:rotation]
+
+        selected: List[RawArticle] = []
+        for source_id in rotated_source_order:
+            if by_source[source_id]:
+                selected.append(by_source[source_id].pop(0))
+            if len(selected) >= limit:
+                return selected
+
+        while len(selected) < limit:
+            added_in_pass = False
+            for source_id in rotated_source_order:
+                if not by_source[source_id]:
+                    continue
+                selected.append(by_source[source_id].pop(0))
+                added_in_pass = True
+                if len(selected) >= limit:
+                    return selected
+
+            if not added_in_pass:
+                break
+
+        return selected
+
+    def _log_processing_failure(self, session, raw_article: RawArticle, stage: str, exc: Exception) -> None:
+        try:
+            failure = ProcessingFailure(
+                source_id=raw_article.source_id,
+                raw_article_id=raw_article.id,
+                stage=stage,
+                error_type=exc.__class__.__name__,
+                message=str(exc),
+                article_title=raw_article.original_title,
+                article_url=raw_article.original_url,
+            )
+            session.add(failure)
+            session.commit()
+        except Exception:
+            session.rollback()

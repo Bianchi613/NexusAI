@@ -5,6 +5,14 @@ from typing import Any, List, Optional
 import requests
 
 from app.config import settings
+from app.core.article_filters import (
+    build_source_body,
+    build_source_summary,
+    is_suspicious_generated_text,
+    normalize_generated_title,
+    sanitize_article_text,
+    truncate_text,
+)
 from app.models import RawArticle
 
 
@@ -46,15 +54,17 @@ class OllamaClient:
         )
 
     def _build_prompt(self, raw_article: RawArticle, prompt_template: str) -> str:
+        source_description = build_source_summary(raw_article.original_description, raw_article.original_content, limit=500)
+        source_content = build_source_body(raw_article.original_content, raw_article.original_description, limit=2500)
         return (
             f"{prompt_template}\n\n"
             "Responda somente com JSON valido no formato:\n"
             '{"title":"", "summary":"", "body":"", "category":"", "tags":[""]}\n\n'
             f"TITULO ORIGINAL: {raw_article.original_title}\n"
-            f"DESCRICAO ORIGINAL: {raw_article.original_description or ''}\n"
+            f"DESCRICAO ORIGINAL: {source_description}\n"
             f"AUTOR ORIGINAL: {raw_article.original_author or ''}\n"
             f"URL ORIGINAL: {raw_article.original_url}\n"
-            f"CONTEUDO ORIGINAL:\n{raw_article.original_content or ''}\n"
+            f"CONTEUDO ORIGINAL:\n{source_content}\n"
         )
 
     def _parse_model_response(self, raw_response: str, raw_article: RawArticle) -> dict[str, Any]:
@@ -63,16 +73,32 @@ class OllamaClient:
         except json.JSONDecodeError:
             payload = {}
 
+        fallback_summary = build_source_summary(raw_article.original_description, raw_article.original_content)
+        fallback_body = build_source_body(raw_article.original_content, raw_article.original_description)
+
         title = self._as_text(payload.get("title")) or raw_article.original_title
-        summary = self._as_optional_text(payload.get("summary")) or raw_article.original_description
-        body = self._as_text(payload.get("body")) or (raw_article.original_content or raw_article.original_title)
+        summary = self._as_optional_text(payload.get("summary")) or fallback_summary
+        body = self._as_text(payload.get("body")) or fallback_body
         category = self._as_text(payload.get("category")) or "geral"
         tags = self._normalize_tags(payload.get("tags"))
 
+        cleaned_title = normalize_generated_title(title, raw_article.original_title)
+        cleaned_summary = self._sanitize_optional_text(summary)
+        cleaned_body = sanitize_article_text(body)
+
+        if is_suspicious_generated_text(cleaned_summary, min_length=40):
+            cleaned_summary = fallback_summary or None
+
+        if is_suspicious_generated_text(cleaned_body, min_length=80):
+            cleaned_body = fallback_body
+
+        cleaned_summary = truncate_text(cleaned_summary, 320) if cleaned_summary else None
+        cleaned_body = truncate_text(cleaned_body, 2000)
+
         return {
-            "title": title,
-            "summary": summary,
-            "body": body,
+            "title": cleaned_title,
+            "summary": cleaned_summary,
+            "body": cleaned_body,
             "category": category,
             "tags": tags,
         }
@@ -91,4 +117,8 @@ class OllamaClient:
 
     def _as_optional_text(self, value: Any) -> Optional[str]:
         text = self._as_text(value)
+        return text or None
+
+    def _sanitize_optional_text(self, value: Optional[str]) -> Optional[str]:
+        text = sanitize_article_text(value)
         return text or None

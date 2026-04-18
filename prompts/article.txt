@@ -16,6 +16,8 @@ Regras obrigatorias:
 - se houver divergencia entre fontes, priorizar o que for consistente entre elas
 - manter tom neutro, informativo e impessoal
 - nao usar opinioes, adjetivos exagerados ou linguagem sensacionalista
+- escrever title, summary e body em portugues do Brasil
+- nao deixar title em ingles quando houver forma natural em portugues
 
 Categoria:
 - sugerir apenas uma categoria

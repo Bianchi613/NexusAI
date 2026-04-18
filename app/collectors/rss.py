@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.core.article_filters import build_content_hash, is_article_candidate, normalize_url
+from app.core.article_filters import build_content_hash, is_article_candidate, normalize_url, sanitize_article_text
 from app.models import NewsSource, RawArticle
 
 
@@ -48,8 +48,15 @@ class RSSCollector:
         session.flush()
 
     def _fetch_source_articles(self, source: NewsSource) -> List[RawArticle]:
-        response = requests.get(source.base_url, timeout=30)
-        response.raise_for_status()
+        try:
+            response = requests.get(
+                source.base_url,
+                timeout=30,
+                headers={"User-Agent": "NexusAI/1.0"},
+            )
+            response.raise_for_status()
+        except requests.RequestException:
+            return []
 
         try:
             root = ET.fromstring(self._sanitize_xml(response.content))
@@ -71,8 +78,10 @@ class RSSCollector:
     def _normalize_item(self, source_id: int, item: ET.Element) -> Optional[RawArticle]:
         title = self._text(item.find("title"))
         url = normalize_url(self._text(item.find("link")))
-        description = self._text(item.find("description"))
-        author = self._text(item.find("author")) or self._text(item.find("{http://purl.org/dc/elements/1.1/}creator"))
+        description = sanitize_article_text(self._text(item.find("description")))
+        author = sanitize_article_text(
+            self._text(item.find("author")) or self._text(item.find("{http://purl.org/dc/elements/1.1/}creator"))
+        )
         external_id = self._text(item.find("guid")) or url
         published_at = self._parse_datetime(self._text(item.find("pubDate")))
 
@@ -83,6 +92,7 @@ class RSSCollector:
             content,
             url,
             blocked_terms=settings.blocked_title_terms,
+            blocked_prefixes=settings.blocked_title_prefixes,
             min_title_length=settings.min_title_length,
             min_content_length=settings.min_content_length,
             min_quality_score=settings.min_quality_score,

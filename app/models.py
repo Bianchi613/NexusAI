@@ -49,6 +49,7 @@ class NewsSource(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     raw_articles: Mapped[List["RawArticle"]] = relationship(back_populates="source")
+    processing_failures: Mapped[List["ProcessingFailure"]] = relationship(back_populates="source")
 
 
 class Category(Base):
@@ -90,6 +91,7 @@ class RawArticle(Base):
 
     source: Mapped["NewsSource"] = relationship(back_populates="raw_articles")
     generated_links: Mapped[List["GeneratedArticleSource"]] = relationship(back_populates="raw_article")
+    processing_failures: Mapped[List["ProcessingFailure"]] = relationship(back_populates="raw_article")
 
 
 class GeneratedArticle(Base):
@@ -140,3 +142,20 @@ class GeneratedArticleSource(Base):
 
     generated_article: Mapped["GeneratedArticle"] = relationship(back_populates="raw_article_links")
     raw_article: Mapped["RawArticle"] = relationship(back_populates="generated_links")
+
+
+class ProcessingFailure(Base):
+    __tablename__ = "processing_failures"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_id: Mapped[Optional[int]] = mapped_column(ForeignKey("news_sources.id"))
+    raw_article_id: Mapped[Optional[int]] = mapped_column(ForeignKey("raw_articles.id"))
+    stage: Mapped[str] = mapped_column(String(50), nullable=False)
+    error_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    article_title: Mapped[Optional[str]] = mapped_column(Text)
+    article_url: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    source: Mapped[Optional["NewsSource"]] = relationship(back_populates="processing_failures")
+    raw_article: Mapped[Optional["RawArticle"]] = relationship(back_populates="processing_failures")

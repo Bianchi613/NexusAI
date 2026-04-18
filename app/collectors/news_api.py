@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.core.article_filters import build_content_hash, is_article_candidate, normalize_url
+from app.core.article_filters import build_content_hash, is_article_candidate, normalize_url, sanitize_article_text
 from app.models import NewsSource, RawArticle
 
 
@@ -80,9 +80,9 @@ class NewsAPICollector:
     def _normalize_article(self, source_id: int, article: dict[str, Any]) -> Optional[RawArticle]:
         original_url = normalize_url(article.get("url"))
         original_title = (article.get("title") or "").strip()
-        original_description = self._clean_text(article.get("description"))
-        original_content = self._clean_text(article.get("content"))
-        original_author = self._clean_text(article.get("author"))
+        original_description = sanitize_article_text(article.get("description"))
+        original_content = sanitize_article_text(article.get("content"))
+        original_author = sanitize_article_text(article.get("author"))
 
         if not is_article_candidate(
             original_title,
@@ -90,6 +90,7 @@ class NewsAPICollector:
             original_content,
             original_url,
             blocked_terms=settings.blocked_title_terms,
+            blocked_prefixes=settings.blocked_title_prefixes,
             min_title_length=settings.min_title_length,
             min_content_length=settings.min_content_length,
             min_quality_score=settings.min_quality_score,
@@ -120,9 +121,3 @@ class NewsAPICollector:
             return datetime.fromisoformat(value.replace("Z", "+00:00"))
         except ValueError:
             return None
-
-    def _clean_text(self, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return None
-        cleaned = " ".join(value.split())
-        return cleaned or None

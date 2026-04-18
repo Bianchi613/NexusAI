@@ -77,19 +77,43 @@ class Settings:
                 "NASA RSS|https://www.nasa.gov/feed/;"
                 "NASA Technology|https://www.nasa.gov/technology/feed/;"
                 "NASA Artemis|https://www.nasa.gov/missions/artemis/feed/;"
-                "ESA Science|https://sci.esa.int/newssyndication/rss/sciweb.xml"
+                "ESA Science|https://sci.esa.int/newssyndication/rss/sciweb.xml;"
+                "Camara Ultimas Noticias|https://www.camara.leg.br/noticias/rss/ultimas-noticias;"
+                "Camara Politica|https://www.camara.leg.br/noticias/rss/dinamico/POLITICA;"
+                "Senado Noticias|https://www12.senado.leg.br/noticias/rss;"
+                "IBGE Agencia de Noticias|https://agenciadenoticias.ibge.gov.br/agencia-rss;"
+                "G1|https://g1.globo.com/rss/g1/;"
+                "Tecnoblog|https://tecnoblog.net/feed/;"
+                "Canaltech|https://canaltech.com.br/rss/;"
+                "Olhar Digital|https://olhardigital.com.br/feed/;"
+                "InfoMoney|https://www.infomoney.com.br/feed/;"
+                "Exame|https://exame.com/feed/;"
+                "BBC News|http://feeds.bbci.co.uk/news/rss.xml;"
+                "CNN|http://rss.cnn.com/rss/edition.rss;"
+                "NYT HomePage|https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml;"
+                "TechCrunch|https://techcrunch.com/feed/;"
+                "The Verge|https://www.theverge.com/rss/index.xml;"
+                "Wired|https://www.wired.com/feed/rss;"
+                "Ars Technica|http://feeds.arstechnica.com/arstechnica/index;"
+                "ScienceDaily|https://www.sciencedaily.com/rss/all.xml"
             ),
         )
     )
-    pipeline_max_items_per_run: int = int(os.getenv("PIPELINE_MAX_ITEMS_PER_RUN", "1"))
-    ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
+    pipeline_max_items_per_run: int = int(os.getenv("PIPELINE_MAX_ITEMS_PER_RUN", "3"))
+    ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "180"))
     min_title_length: int = int(os.getenv("MIN_TITLE_LENGTH", "20"))
-    min_content_length: int = int(os.getenv("MIN_CONTENT_LENGTH", "80"))
-    min_quality_score: int = int(os.getenv("MIN_QUALITY_SCORE", "2"))
+    min_content_length: int = int(os.getenv("MIN_CONTENT_LENGTH", "40"))
+    min_quality_score: int = int(os.getenv("MIN_QUALITY_SCORE", "1"))
     blocked_title_terms: list[str] = field(
         default_factory=lambda: _parse_csv(
             os.getenv("BLOCKED_TITLE_TERMS"),
-            "webinar,register,sponsored,opinion,advertisement,jobs",
+            "webinar,sponsored,advertisement,press release",
+        )
+    )
+    blocked_title_prefixes: list[str] = field(
+        default_factory=lambda: _parse_csv(
+            os.getenv("BLOCKED_TITLE_PREFIXES"),
+            "saiba como,confira,entenda como,veja como",
         )
     )
     allowed_categories: list[str] = field(
