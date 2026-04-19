@@ -1,4 +1,5 @@
 from collections import Counter
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List
 
@@ -9,7 +10,14 @@ from app.collectors.json_feed import JSONFeedCollector
 from app.collectors.news_api import NewsAPICollector
 from app.collectors.rss import RSSCollector
 from app.config import settings
-from app.core.article_filters import normalize_label, normalize_title, normalize_url, slugify
+from app.core.article_filters import (
+    are_titles_similar,
+    guess_category_from_article,
+    normalize_label,
+    normalize_title,
+    normalize_url,
+    slugify,
+)
 from app.db import get_session
 from app.models import Category, GeneratedArticle, GeneratedArticleSource, NewsSource, ProcessingFailure, RawArticle, Tag
 from sqlalchemy import func, select
@@ -38,33 +46,68 @@ class NewsPipeline:
             collected_articles.extend(self.rss_collector.collect(session))
             collected_articles.extend(self.json_feed_collector.collect(session))
             collected_articles = self._deduplicate_batch(collected_articles)
-            candidate_limit = self._get_candidate_limit(len(collected_articles), target_limit)
-            if candidate_limit > 0:
-                collected_articles = self._select_articles_for_run(
-                    session,
-                    collected_articles,
-                    candidate_limit,
-                )
-            stored_articles = [self._persist_raw_article(session, article) for article in collected_articles]
+            collected_articles = self._limit_varied_articles_per_source(collected_articles)
+            stored_articles = self._persist_raw_articles(session, collected_articles)
             session.commit()
-            return self._generate_articles_for_run(session, stored_articles, prompt_template, target_limit)
+            generation_candidates = self._prepare_generation_candidates(session, stored_articles, target_limit)
+            return self._generate_articles_for_run(session, generation_candidates, prompt_template, target_limit)
 
     def _persist_raw_article(self, session, article: RawArticle) -> RawArticle:
-        article_url = normalize_url(article.original_url)
-        article_title = normalize_title(article.original_title)
-        existing_articles = session.scalars(select(RawArticle)).all()
+        return self._persist_raw_articles(session, [article])[0]
 
-        for existing in existing_articles:
-            if article.content_hash and existing.content_hash == article.content_hash:
-                return existing
-            if article_url and normalize_url(existing.original_url) == article_url:
-                return existing
-            if article_title and normalize_title(existing.original_title) == article_title:
-                return existing
+    def _persist_raw_articles(self, session, articles: List[RawArticle]) -> List[RawArticle]:
+        if not articles:
+            return []
 
-        session.add(article)
-        session.flush()
-        return article
+        lookback_start = datetime.now(timezone.utc) - timedelta(days=settings.deduplication_lookback_days)
+        article_urls = {normalize_url(article.original_url) for article in articles if normalize_url(article.original_url)}
+        existing_by_url: dict[str, RawArticle] = {}
+
+        if article_urls:
+            existing_urls = session.scalars(select(RawArticle).where(RawArticle.original_url.in_(article_urls))).all()
+            existing_by_url = {normalize_url(article.original_url): article for article in existing_urls}
+
+        recent_articles = session.scalars(select(RawArticle).where(RawArticle.collected_at >= lookback_start)).all()
+        existing_by_hash: dict[str, RawArticle] = {}
+        existing_by_title: dict[str, RawArticle] = {}
+
+        for existing_article in recent_articles:
+            if existing_article.content_hash and existing_article.content_hash not in existing_by_hash:
+                existing_by_hash[existing_article.content_hash] = existing_article
+
+            normalized_existing_title = normalize_title(existing_article.original_title)
+            if normalized_existing_title and normalized_existing_title not in existing_by_title:
+                existing_by_title[normalized_existing_title] = existing_article
+
+        persisted_articles: List[RawArticle] = []
+        for article in articles:
+            article_url = normalize_url(article.original_url)
+            article_title = normalize_title(article.original_title)
+
+            existing_article = None
+            if article_url:
+                existing_article = existing_by_url.get(article_url)
+            if existing_article is None and article.content_hash:
+                existing_article = existing_by_hash.get(article.content_hash)
+            if existing_article is None and article_title:
+                existing_article = existing_by_title.get(article_title)
+
+            if existing_article is not None:
+                persisted_articles.append(existing_article)
+                continue
+
+            session.add(article)
+            session.flush()
+            persisted_articles.append(article)
+
+            if article_url:
+                existing_by_url[article_url] = article
+            if article.content_hash:
+                existing_by_hash[article.content_hash] = article
+            if article_title:
+                existing_by_title[article_title] = article
+
+        return persisted_articles
 
     def _already_generated(self, session, raw_article_id: int) -> bool:
         existing = session.scalar(
@@ -141,6 +184,41 @@ class NewsPipeline:
             unique_articles.append(article)
 
         return unique_articles
+
+    def _limit_varied_articles_per_source(self, articles: List[RawArticle]) -> List[RawArticle]:
+        max_per_source = settings.max_raw_articles_per_source
+        if max_per_source <= 0:
+            return articles
+
+        selected_articles: List[RawArticle] = []
+        selected_by_source: dict[int | None, List[RawArticle]] = {}
+        seen_hashes_by_source: dict[int | None, set[str]] = {}
+        seen_titles_by_source: dict[int | None, list[str]] = {}
+
+        for article in articles:
+            source_key = article.source_id
+            source_articles = selected_by_source.setdefault(source_key, [])
+            if len(source_articles) >= max_per_source:
+                continue
+
+            article_hash = article.content_hash or ""
+            if article_hash and article_hash in seen_hashes_by_source.setdefault(source_key, set()):
+                continue
+
+            article_title = article.original_title or ""
+            existing_titles = seen_titles_by_source.setdefault(source_key, [])
+            if article_title and any(are_titles_similar(article_title, seen_title) for seen_title in existing_titles):
+                continue
+
+            source_articles.append(article)
+            selected_articles.append(article)
+
+            if article_hash:
+                seen_hashes_by_source[source_key].add(article_hash)
+            if article_title:
+                existing_titles.append(article_title)
+
+        return selected_articles
 
     def _select_articles_for_run(self, session, articles: List[RawArticle], limit: int) -> List[RawArticle]:
         if limit <= 0:
@@ -245,7 +323,98 @@ class NewsPipeline:
             return total_articles
 
         multiplier = max(1, settings.pipeline_candidate_pool_multiplier)
-        return min(total_articles, max(target_limit, target_limit * multiplier))
+        buffer = max(0, settings.pipeline_generation_buffer)
+        return min(total_articles, max(target_limit, target_limit * multiplier + buffer))
+
+    def _prepare_generation_candidates(
+        self,
+        session,
+        stored_articles: List[RawArticle],
+        target_limit: int,
+    ) -> List[RawArticle]:
+        candidates = self._exclude_already_generated_articles(session, stored_articles)
+        candidate_limit = self._get_candidate_limit(len(candidates), target_limit)
+        if candidate_limit > 0:
+            candidates = self._select_articles_for_run(session, candidates, candidate_limit)
+        candidates = self._exclude_similar_articles_in_batch(candidates)
+        return self._prioritize_articles_for_generation(session, candidates)
+
+    def _exclude_already_generated_articles(self, session, articles: List[RawArticle]) -> List[RawArticle]:
+        if not articles:
+            return []
+
+        raw_article_ids = [article.id for article in articles if article is not None and article.id is not None]
+        if not raw_article_ids:
+            return []
+
+        generated_ids = {
+            raw_article_id
+            for (raw_article_id,) in session.execute(
+                select(GeneratedArticleSource.raw_article_id).where(GeneratedArticleSource.raw_article_id.in_(raw_article_ids))
+            ).all()
+        }
+        return [article for article in articles if article is not None and article.id not in generated_ids]
+
+    def _exclude_similar_articles_in_batch(self, articles: List[RawArticle]) -> List[RawArticle]:
+        if not articles:
+            return []
+
+        filtered_articles: List[RawArticle] = []
+        seen_hashes: set[str] = set()
+        seen_titles: list[str] = []
+
+        for article in articles:
+            if article.content_hash and article.content_hash in seen_hashes:
+                continue
+
+            if any(are_titles_similar(article.original_title, seen_title) for seen_title in seen_titles):
+                continue
+
+            filtered_articles.append(article)
+            if article.content_hash:
+                seen_hashes.add(article.content_hash)
+            if article.original_title:
+                seen_titles.append(article.original_title)
+
+        return filtered_articles
+
+    def _prioritize_articles_for_generation(self, session, articles: List[RawArticle]) -> List[RawArticle]:
+        if len(articles) <= 1:
+            return articles
+
+        source_name_by_id = {
+            source_id: source_name
+            for source_id, source_name in session.execute(
+                select(NewsSource.id, NewsSource.name).where(NewsSource.id.in_({article.source_id for article in articles}))
+            ).all()
+        }
+
+        grouped_by_category: dict[str, List[RawArticle]] = {}
+        category_order: List[str] = []
+        for article in articles:
+            predicted_category = guess_category_from_article(
+                article.original_title,
+                article.original_description,
+                source_name=source_name_by_id.get(article.source_id),
+            )
+            if predicted_category not in grouped_by_category:
+                grouped_by_category[predicted_category] = []
+                category_order.append(predicted_category)
+            grouped_by_category[predicted_category].append(article)
+
+        prioritized_articles: List[RawArticle] = []
+        while len(prioritized_articles) < len(articles):
+            added_in_pass = False
+            for category_name in category_order:
+                if not grouped_by_category[category_name]:
+                    continue
+                prioritized_articles.append(grouped_by_category[category_name].pop(0))
+                added_in_pass = True
+
+            if not added_in_pass:
+                break
+
+        return prioritized_articles
 
     def _generate_articles_for_run(
         self,

@@ -16,6 +16,43 @@ TRACKING_QUERY_KEYS = {
     "source",
 }
 
+TITLE_SIMILARITY_STOPWORDS = {
+    "a",
+    "o",
+    "os",
+    "as",
+    "um",
+    "uma",
+    "uns",
+    "umas",
+    "de",
+    "do",
+    "da",
+    "dos",
+    "das",
+    "e",
+    "em",
+    "no",
+    "na",
+    "nos",
+    "nas",
+    "para",
+    "por",
+    "com",
+    "sem",
+    "sobre",
+    "apos",
+    "apos",
+    "the",
+    "and",
+    "for",
+    "with",
+    "from",
+    "after",
+    "into",
+    "its",
+}
+
 
 def normalize_text(value: Optional[str]) -> str:
     if not value:
@@ -439,3 +476,135 @@ def normalize_generated_title(title: Optional[str], source_title: Optional[str] 
 
     normalized = re.sub(r"\s+", " ", normalized).strip(" -:")
     return normalized
+
+
+def title_similarity_tokens(value: Optional[str]) -> set[str]:
+    normalized = normalize_title(value)
+    tokens = {
+        token
+        for token in normalized.split()
+        if len(token) >= 3 and token not in TITLE_SIMILARITY_STOPWORDS and not token.isdigit()
+    }
+    return tokens
+
+
+def are_titles_similar(left: Optional[str], right: Optional[str]) -> bool:
+    normalized_left = normalize_title(left)
+    normalized_right = normalize_title(right)
+    if not normalized_left or not normalized_right:
+        return False
+    if normalized_left == normalized_right:
+        return True
+
+    left_tokens = title_similarity_tokens(left)
+    right_tokens = title_similarity_tokens(right)
+    if not left_tokens or not right_tokens:
+        return False
+
+    common_tokens = left_tokens & right_tokens
+    if len(common_tokens) < 3:
+        return False
+
+    smaller_size = min(len(left_tokens), len(right_tokens))
+    if smaller_size == 0:
+        return False
+
+    overlap_ratio = len(common_tokens) / smaller_size
+    union_size = len(left_tokens | right_tokens)
+    jaccard_ratio = len(common_tokens) / union_size if union_size else 0.0
+
+    return overlap_ratio >= 0.75 or jaccard_ratio >= 0.6
+
+
+def guess_category_from_article(
+    title: Optional[str],
+    description: Optional[str] = None,
+    *,
+    source_name: Optional[str] = None,
+) -> str:
+    text = normalize_title(" ".join(part for part in [source_name or "", title or "", description or ""] if part))
+
+    keyword_groups = [
+        (
+            "Esportes",
+            {"futebol", "basquete", "tenis", "esporte", "jogador", "partida", "campeonato", "gol", "nba", "nfl"},
+        ),
+        (
+            "Politica",
+            {
+                "camara",
+                "senado",
+                "congresso",
+                "governo",
+                "presidente",
+                "deputado",
+                "senador",
+                "politica",
+                "ministerio",
+                "eleicao",
+                "plenario",
+                "comissao",
+            },
+        ),
+        (
+            "Saude",
+            {"saude", "hospital", "medico", "vacina", "doenca", "virus", "tratamento", "medicina"},
+        ),
+        (
+            "Negocios",
+            {
+                "mercado",
+                "economia",
+                "bolsa",
+                "varejo",
+                "investimento",
+                "receita",
+                "lucro",
+                "empresa",
+                "banco",
+                "inflacao",
+                "credito",
+                "negocio",
+            },
+        ),
+        (
+            "Espaco",
+            {"nasa", "artemis", "espaco", "orbita", "satelite", "astronauta", "foguete", "lua", "marte"},
+        ),
+        (
+            "Ciencia",
+            {"ciencia", "cientista", "estudo", "pesquisa", "laboratorio", "nature", "sciencedaily", "descoberta"},
+        ),
+        (
+            "Tecnologia",
+            {
+                "tecnologia",
+                "tecnoblog",
+                "canaltech",
+                "olhar digital",
+                "techcrunch",
+                "wired",
+                "ars technica",
+                "software",
+                "app",
+                "aplicativo",
+                "apple",
+                "google",
+                "microsoft",
+                "chip",
+                "ia",
+                "ai",
+                "iphone",
+                "android",
+                "pc",
+                "smartphone",
+                "app store",
+            },
+        ),
+    ]
+
+    for category, keywords in keyword_groups:
+        if any(keyword in text for keyword in keywords):
+            return category
+
+    return "Geral"

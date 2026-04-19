@@ -1,6 +1,11 @@
+from contextlib import contextmanager
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.config import settings
+import app.core.pipeline as pipeline_module
+from app.ai.ollama import GeneratedArticlePayload
 from app.core.pipeline import NewsPipeline
 from app.models import Base, GeneratedArticle, NewsSource, RawArticle
 
@@ -100,3 +105,95 @@ def test_pipeline_selection_rotates_types_on_later_runs() -> None:
         selected = pipeline._select_articles_for_run(session, articles, limit=1)
 
         assert [article.source_id for article in selected] == [json_source.id]
+
+
+def test_pipeline_candidate_limit_uses_small_buffer_for_generation() -> None:
+    original_multiplier = settings.pipeline_candidate_pool_multiplier
+    original_buffer = settings.pipeline_generation_buffer
+
+    settings.pipeline_candidate_pool_multiplier = 1
+    settings.pipeline_generation_buffer = 4
+
+    try:
+        pipeline = NewsPipeline()
+        assert pipeline._get_candidate_limit(total_articles=100, target_limit=12) == 16
+        assert pipeline._get_candidate_limit(total_articles=10, target_limit=12) == 10
+    finally:
+        settings.pipeline_candidate_pool_multiplier = original_multiplier
+        settings.pipeline_generation_buffer = original_buffer
+
+
+def test_pipeline_run_persists_all_raw_articles_before_limiting_generation(monkeypatch) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
+    Base.metadata.create_all(engine)
+
+    with SessionLocal() as seed_session:
+        source = NewsSource(name="RSS One", base_url="https://rss.example.com", source_type="rss", is_active=True)
+        seed_session.add(source)
+        seed_session.commit()
+        seed_session.refresh(source)
+        source_id = source.id
+
+    @contextmanager
+    def fake_get_session():
+        with SessionLocal() as session:
+            yield session
+
+    monkeypatch.setattr(pipeline_module, "get_session", fake_get_session)
+
+    original_limit = settings.pipeline_max_items_per_run
+    original_multiplier = settings.pipeline_candidate_pool_multiplier
+    original_buffer = settings.pipeline_generation_buffer
+    original_max_raw_per_source = settings.max_raw_articles_per_source
+
+    settings.pipeline_max_items_per_run = 2
+    settings.pipeline_candidate_pool_multiplier = 1
+    settings.pipeline_generation_buffer = 0
+    settings.max_raw_articles_per_source = 3
+
+    try:
+        article_titles = [
+            "Congresso aprova projeto de educacao digital nas escolas",
+            "Apple apresenta novo iPhone com foco em inteligencia artificial",
+            "Mercado reage a anuncio de juros pelo banco central",
+            "NASA divulga nova etapa da missao Artemis",
+            "Hospital amplia atendimento de emergencia no interior",
+        ]
+        articles = [
+            RawArticle(
+                source_id=source_id,
+                original_title=title,
+                original_url=f"https://rss.example.com/story-{index}",
+                original_description="Descricao suficiente para o teste.",
+                original_content="Conteudo suficiente para o teste do fluxo completo.",
+            )
+            for index, title in enumerate(article_titles, start=1)
+        ]
+
+        pipeline = NewsPipeline()
+        monkeypatch.setattr(pipeline.api_collector, "collect", lambda session: [])
+        monkeypatch.setattr(pipeline.rss_collector, "collect", lambda session: list(articles))
+        monkeypatch.setattr(pipeline.json_feed_collector, "collect", lambda session: [])
+
+        payloads = [
+            GeneratedArticlePayload("Titulo 1", "Resumo 1", "Corpo 1", "Tecnologia", ["IA"]),
+            GeneratedArticlePayload("Titulo 2", "Resumo 2", "Corpo 2", "Politica", ["Congresso"]),
+        ]
+
+        monkeypatch.setattr(pipeline.ai_client, "generate_article", lambda raw_article, prompt: payloads.pop(0))
+
+        generated = pipeline.run()
+
+        with SessionLocal() as verify_session:
+            raw_count = verify_session.query(RawArticle).count()
+            generated_count = verify_session.query(GeneratedArticle).count()
+
+        assert raw_count == 3
+        assert generated_count == 2
+        assert len(generated) == 2
+    finally:
+        settings.pipeline_max_items_per_run = original_limit
+        settings.pipeline_candidate_pool_multiplier = original_multiplier
+        settings.pipeline_generation_buffer = original_buffer
+        settings.max_raw_articles_per_source = original_max_raw_per_source

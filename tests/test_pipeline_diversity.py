@@ -45,6 +45,66 @@ def test_pipeline_selection_limits_same_source_to_three_articles() -> None:
         assert sum(1 for article in selected if article.source_id == source_b.id) == 2
 
 
+def test_pipeline_limits_raw_articles_per_source_to_three_varied_items() -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
+    Base.metadata.create_all(engine)
+
+    original_max_raw_per_source = settings.max_raw_articles_per_source
+    settings.max_raw_articles_per_source = 3
+
+    try:
+        with SessionLocal() as session:
+            source = NewsSource(name="RSS A", base_url="https://rss-a.example.com", source_type="rss", is_active=True)
+            session.add(source)
+            session.flush()
+
+            articles = [
+                RawArticle(
+                    source_id=source.id,
+                    original_title="Apple anuncia novo chip com foco em IA",
+                    original_url="https://rss-a.example.com/story-1",
+                    content_hash="hash-1",
+                ),
+                RawArticle(
+                    source_id=source.id,
+                    original_title="Apple anuncia novo chip para inteligencia artificial",
+                    original_url="https://rss-a.example.com/story-2",
+                    content_hash="hash-2",
+                ),
+                RawArticle(
+                    source_id=source.id,
+                    original_title="Congresso aprova nova politica industrial",
+                    original_url="https://rss-a.example.com/story-3",
+                    content_hash="hash-3",
+                ),
+                RawArticle(
+                    source_id=source.id,
+                    original_title="NASA prepara nova etapa da missao Artemis",
+                    original_url="https://rss-a.example.com/story-4",
+                    content_hash="hash-4",
+                ),
+                RawArticle(
+                    source_id=source.id,
+                    original_title="Hospital amplia atendimento de emergencia",
+                    original_url="https://rss-a.example.com/story-5",
+                    content_hash="hash-5",
+                ),
+            ]
+
+            pipeline = NewsPipeline()
+            limited = pipeline._limit_varied_articles_per_source(articles)
+
+            assert len(limited) == 3
+            assert [article.original_url for article in limited] == [
+                "https://rss-a.example.com/story-1",
+                "https://rss-a.example.com/story-3",
+                "https://rss-a.example.com/story-4",
+            ]
+    finally:
+        settings.max_raw_articles_per_source = original_max_raw_per_source
+
+
 def test_pipeline_generation_defers_repeated_category_until_diversity_exists(monkeypatch: pytest.MonkeyPatch) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)

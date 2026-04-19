@@ -1,18 +1,19 @@
 # NexusAI
 
-`NexusAI` e um backend de pipeline para portal de noticias com IA. O fluxo principal ja esta funcional: coleta noticias de `api`, `rss` e `json_feed`, filtra o material bruto, evita duplicacoes, envia o conteudo para o Ollama local e salva a materia gerada no PostgreSQL com categoria, tags, imagens, videos e vinculo com a fonte original.
+`NexusAI` e um backend de pipeline para portal de noticias com IA. O fluxo principal ja esta funcional: coleta noticias de `api`, `rss` e `json_feed`, filtra o material bruto, evita duplicacoes em `raw_articles`, envia o conteudo para o Ollama local e salva a materia gerada no PostgreSQL com categoria, tags, imagens, videos e vinculo com a fonte original.
 
 ## Visao Geral
 
 O projeto foi pensado para operar neste fluxo:
 
 1. coletar noticias de APIs, RSS e JSON Feed
-2. salvar noticias brutas em `raw_articles`
-3. evitar duplicidade por URL, titulo normalizado e hash de conteudo
-4. gerar materia estruturada com o Ollama local
-5. salvar a materia final em `generated_articles`
-6. registrar a relacao entre materia gerada e noticia bruta em `generated_article_sources`
-7. registrar falhas por artigo em `processing_failures`, sem abortar a rodada inteira
+2. limitar o bruto para ate `3` noticias variadas por fonte em cada rodada
+3. salvar noticias brutas em `raw_articles`
+4. evitar duplicidade por URL, titulo normalizado e hash de conteudo comparando apenas com `raw_articles`
+5. gerar materia estruturada com o Ollama local
+6. salvar a materia final em `generated_articles`
+7. registrar a relacao entre materia gerada e noticia bruta em `generated_article_sources`
+8. registrar falhas por artigo em `processing_failures`, sem abortar a rodada inteira
 
 ![Fluxo basico do NexusAI](docs/EstruturaBasica.png)
 
@@ -31,6 +32,7 @@ O nucleo do projeto esta quase completo e ja cobre o basico combinado.
 - suporte estrutural a JSON Feed
 - suporte a coleta por API HTTP quando `NEWS_API_KEY` estiver configurada
 - persistencia de noticias brutas em `raw_articles`
+- limite de ate `3` noticias variadas por fonte na etapa bruta
 - deduplicacao por `original_url`, titulo normalizado e `content_hash`
 - limpeza de HTML, tabelas, ruido e texto malformado antes da geracao
 - filtro leve de qualidade para evitar lixo obvio
@@ -43,13 +45,13 @@ O nucleo do projeto esta quase completo e ja cobre o basico combinado.
 - tratamento de erro por artigo sem derrubar o lote inteiro
 - registro de falhas em `processing_failures`
 - rotacao de fontes na selecao do lote
+- testes automatizados para filtros, RSS, JSON Feed, selecao, diversidade e deduplicacao
 
 ### O que ainda falta
 
 - melhorar a qualidade editorial de alguns titulos e resumos gerados
-- adicionar testes automatizados
 - expor uma API propria para consulta, revisao e publicacao
-- evoluir a deduplicacao para casos semanticamente parecidos
+- expandir a cobertura dos testes automatizados
 - adicionar um painel ou frontend para revisao
 
 ## Fluxo Atual
@@ -59,9 +61,11 @@ API / RSS / JSON Feed
    ->
 collectors
    ->
+ate 3 noticias variadas por fonte
+   ->
 raw_articles
    ->
-filtros e deduplicacao
+deduplicacao em raw_articles
    ->
 Ollama local
    ->
@@ -169,6 +173,8 @@ Observacoes importantes:
 - JSON Feed ja e suportado como formato nativo e pode ser configurado por `JSON_DEFAULT_FEEDS`
 - o projeto ja inclui como exemplo de `json_feed` a fonte `Daring Fireball`
 - sem `NEWS_API_KEY`, a parte de API HTTP nao roda, mas o pipeline continua funcional por RSS
+- hoje a deduplicacao oficial acontece somente em `raw_articles`
+- `generated_articles` nao entra na comparacao semantica de duplicidade
 
 ## Filtros e Deduplicacao
 
@@ -179,9 +185,17 @@ O projeto aplica um filtro propositalmente leve antes de salvar a noticia bruta:
 - aplica score minimo de qualidade
 - bloqueia termos promocionais ou claramente fracos
 - bloqueia prefixos como `saiba como`, `confira` e `entenda como`
+- limita o bruto para ate `3` noticias variadas por fonte por rodada
 - remove parametros de rastreamento da URL
 - deduplica por URL normalizada, titulo normalizado e hash de conteudo
+- usa janela configuravel de lookback para titulo e hash em `raw_articles`
 - limpa HTML, imagens, videos, tabelas e blocos estruturados antes da geracao
+
+Importante:
+
+- a comparacao de duplicidade e feita contra `raw_articles`
+- `generated_articles` nao participa da deduplicacao editorial
+- o unico uso indireto da geracao e evitar gerar duas vezes da mesma `raw_article` ja vinculada
 
 As regras ficam principalmente em [app/core/article_filters.py](/d:/Projetos/Nexus%20AI/app/core/article_filters.py:1).
 
@@ -212,6 +226,13 @@ JSON_FEED_PAGE_SIZE=10
 RSS_DEFAULT_FEEDS=NASA RSS|https://www.nasa.gov/feed/;NASA Technology|https://www.nasa.gov/technology/feed/;NASA Artemis|https://www.nasa.gov/missions/artemis/feed/;ESA Science|https://sci.esa.int/newssyndication/rss/sciweb.xml;Camara Ultimas Noticias|https://www.camara.leg.br/noticias/rss/ultimas-noticias;Camara Politica|https://www.camara.leg.br/noticias/rss/dinamico/POLITICA;Senado Noticias|https://www12.senado.leg.br/noticias/rss;IBGE Agencia de Noticias|https://agenciadenoticias.ibge.gov.br/agencia-rss;G1|https://g1.globo.com/rss/g1/;Tecnoblog|https://tecnoblog.net/feed/;Canaltech|https://canaltech.com.br/rss/;Olhar Digital|https://olhardigital.com.br/feed/;InfoMoney|https://www.infomoney.com.br/feed/;Exame|https://exame.com/feed/;BBC News|http://feeds.bbci.co.uk/news/rss.xml;CNN|http://rss.cnn.com/rss/edition.rss;The Guardian World|https://www.theguardian.com/world/rss;NYT HomePage|https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml;TechCrunch|https://techcrunch.com/feed/;The Verge|https://www.theverge.com/rss/index.xml;Wired|https://www.wired.com/feed/rss;Ars Technica|http://feeds.arstechnica.com/arstechnica/index;ScienceDaily|https://www.sciencedaily.com/rss/all.xml
 JSON_DEFAULT_FEEDS=Daring Fireball|https://daringfireball.net/feeds/json
 PIPELINE_MAX_ITEMS_PER_RUN=12
+PIPELINE_CANDIDATE_POOL_MULTIPLIER=1
+PIPELINE_GENERATION_BUFFER=4
+MAX_RAW_ARTICLES_PER_SOURCE=3
+MAX_ARTICLES_PER_SOURCE_PER_RUN=3
+MAX_ARTICLES_PER_CATEGORY_PER_RUN=2
+MIN_DISTINCT_CATEGORIES_PER_RUN=2
+DEDUPLICATION_LOOKBACK_DAYS=15
 MIN_TITLE_LENGTH=20
 MIN_CONTENT_LENGTH=40
 MIN_QUALITY_SCORE=1
@@ -286,19 +307,21 @@ python -m app.main
 
 Observacao:
 
-- o `app.main` nao faz mais criacao automatica de schema
+- `app.main` chama `init_db()`, mas hoje essa funcao nao cria schema
+- o controle de schema fica no Alembic
 - antes de rodar em um banco novo, execute `alembic upgrade head`
 
 Esse comando:
 
-1. inicializa o banco
+1. usa o banco ja preparado por migration
 2. coleta noticias das fontes configuradas
-3. deduplica o lote
-4. salva as noticias brutas
-5. preserva os links de imagens e videos encontrados nas fontes
-6. envia os artigos selecionados ao Ollama
-7. salva as materias geradas com categoria, tags, imagens e videos
-8. registra falhas por artigo, se houver
+3. limita o bruto para ate `3` noticias variadas por fonte
+4. deduplica o lote e compara com `raw_articles`
+5. salva as noticias brutas
+6. preserva os links de imagens e videos encontrados nas fontes
+7. envia os artigos selecionados ao Ollama
+8. salva as materias geradas com categoria, tags, imagens e videos
+9. registra falhas por artigo, se houver
 
 ## Consultas Uteis
 
@@ -384,6 +407,9 @@ Base inicial de testes automatizados:
 
 - `tests/test_article_filters.py`
 - `tests/test_json_feed_collector.py`
+- `tests/test_pipeline_deduplication.py`
+- `tests/test_pipeline_diversity.py`
+- `tests/test_pipeline_selection.py`
 - `tests/test_rss_collector.py`
 
 Para rodar:
@@ -396,10 +422,13 @@ python -m pytest
 
 - `PIPELINE_MAX_ITEMS_PER_RUN` controla quantos artigos entram em cada rodada do Ollama
 - o valor padrao atual esta em `12`
+- `MAX_RAW_ARTICLES_PER_SOURCE` controla quantas noticias brutas variadas por fonte entram por rodada
+- `DEDUPLICATION_LOOKBACK_DAYS` controla a janela de comparacao de titulo e hash em `raw_articles`
 - `OLLAMA_TIMEOUT_SECONDS` foi aumentado para reduzir abortos em artigos lentos
 - falhas de um artigo nao interrompem a rodada inteira
 - hoje o pipeline opera no modo mais simples: uma noticia bruta gera uma materia
 - os formatos padrao tratados pelo sistema agora sao `api`, `rss` e `json_feed`
+- a deduplicacao oficial acontece em `raw_articles`, nao em `generated_articles`
 - `raw_articles.original_image_urls` guarda as imagens encontradas na fonte
 - `raw_articles.original_video_urls` guarda os videos encontrados na fonte
 - `generated_articles.image_urls` herda as imagens da noticia base usada na geracao
