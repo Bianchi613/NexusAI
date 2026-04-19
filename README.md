@@ -2,64 +2,174 @@
 
 Backend de pipeline para portal de noticias com IA.
 
-O projeto faz 4 coisas principais:
+O projeto faz isto:
 
 1. coleta noticias de `api`, `rss` e `json_feed`
 2. salva o material bruto em `raw_articles`
 3. evita duplicidade comparando com `raw_articles`
-4. gera a materia final com IA e salva em `generated_articles`
+4. gera a materia final com IA
+5. salva o resultado em `generated_articles`
 
 ![Fluxo basico do NexusAI](docs/EstruturaBasica.png)
 
 ## Inicio Rapido
 
-Se a ideia for apenas rodar o projeto sem ler o resto todo, use este caminho:
+Se voce quer apenas rodar o projeto, siga estes passos.
 
-### 1. Instale as dependencias
+### 1. Instale as dependencias Python
+
+Windows PowerShell:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+Linux/macOS:
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-### 2. Configure o `.env`
+### 2. Instale o Ollama e deixe o servidor ativo
 
-O minimo para funcionar e:
+O projeto depende do servidor HTTP do Ollama.
+Sem isso, a etapa de geracao nao funciona.
 
-```env
-DATABASE_URL=postgresql://postgres:12345@localhost:5432/nexusai
-OLLAMA_MODEL=llama3
-OLLAMA_BASE_URL=http://127.0.0.1:11434
+Suba o servidor:
+
+Windows PowerShell:
+
+```powershell
+ollama serve
 ```
 
-Se quiser coleta por API tambem, preencha:
+Linux/macOS:
+
+```bash
+ollama serve
+```
+
+Em outro terminal, carregue o modelo:
+
+Windows PowerShell:
+
+```powershell
+ollama pull llama3
+ollama run llama3
+```
+
+Linux/macOS:
+
+```bash
+ollama pull llama3
+ollama run llama3
+```
+
+### 3. Crie o arquivo `.env`
+
+Crie um arquivo chamado `.env` na raiz do projeto e cole este exemplo:
+
+```env
+# Database
+DATABASE_URL=postgresql://postgres:12345@localhost:5432/nexusai
+DATABASE_ECHO=false
+
+# AI
+OLLAMA_MODEL=llama3
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_TIMEOUT_SECONDS=180
+
+# API
+NEWS_API_SOURCE_NAME=NewsAPI
+NEWS_API_KEY=
+NEWS_API_URL=https://newsapi.org/v2/top-headlines
+NEWS_API_COUNTRY=us
+NEWS_API_LANGUAGE=en
+NEWS_API_QUERY=technology
+NEWS_API_PAGE_SIZE=10
+
+# RSS
+RSS_PAGE_SIZE=10
+RSS_DEFAULT_FEEDS=NASA RSS|https://www.nasa.gov/feed/;NASA Technology|https://www.nasa.gov/technology/feed/;NASA Artemis|https://www.nasa.gov/missions/artemis/feed/;ESA Science|https://sci.esa.int/newssyndication/rss/sciweb.xml;Camara Ultimas Noticias|https://www.camara.leg.br/noticias/rss/ultimas-noticias;Camara Politica|https://www.camara.leg.br/noticias/rss/dinamico/POLITICA;Senado Noticias|https://www12.senado.leg.br/noticias/rss;IBGE Agencia de Noticias|https://agenciadenoticias.ibge.gov.br/agencia-rss;G1|https://g1.globo.com/rss/g1/;Tecnoblog|https://tecnoblog.net/feed/;Canaltech|https://canaltech.com.br/rss/;Olhar Digital|https://olhardigital.com.br/feed/;InfoMoney|https://www.infomoney.com.br/feed/;Exame|https://exame.com/feed/;BBC News|http://feeds.bbci.co.uk/news/rss.xml;CNN|http://rss.cnn.com/rss/edition.rss;The Guardian World|https://www.theguardian.com/world/rss;NYT HomePage|https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml;TechCrunch|https://techcrunch.com/feed/;The Verge|https://www.theverge.com/rss/index.xml;Wired|https://www.wired.com/feed/rss;Ars Technica|http://feeds.arstechnica.com/arstechnica/index;ScienceDaily|https://www.sciencedaily.com/rss/all.xml
+
+# JSON Feed
+JSON_FEED_PAGE_SIZE=10
+JSON_DEFAULT_FEEDS=Daring Fireball|https://daringfireball.net/feeds/json
+
+# Pipeline
+PIPELINE_MAX_ITEMS_PER_RUN=12
+PIPELINE_CANDIDATE_POOL_MULTIPLIER=1
+PIPELINE_GENERATION_BUFFER=4
+MAX_RAW_ARTICLES_PER_SOURCE=3
+MAX_ARTICLES_PER_SOURCE_PER_RUN=3
+MAX_ARTICLES_PER_CATEGORY_PER_RUN=2
+MIN_DISTINCT_CATEGORIES_PER_RUN=2
+DEDUPLICATION_LOOKBACK_DAYS=15
+
+# Filters
+MIN_TITLE_LENGTH=20
+MIN_CONTENT_LENGTH=40
+MIN_QUALITY_SCORE=1
+BLOCKED_TITLE_TERMS=webinar,sponsored,advertisement,press release
+BLOCKED_TITLE_PREFIXES=saiba como,confira,entenda como,veja como
+ALLOWED_CATEGORIES=Geral,Tecnologia,Ciencia,Espaco,Negocios,Politica,Saude,Esportes
+MAX_TAGS_PER_ARTICLE=5
+```
+
+Se quiser usar coleta por API real, preencha:
 
 ```env
 NEWS_API_KEY=sua_chave_aqui
 ```
 
-### 3. Prepare o banco
+### 4. Prepare o banco
+
+Windows PowerShell:
+
+```powershell
+alembic upgrade head
+```
+
+Linux/macOS:
 
 ```bash
 alembic upgrade head
 ```
 
-### 4. Rode o pipeline
+### 5. Rode o pipeline
+
+Windows PowerShell:
+
+```powershell
+python -m app.main
+```
+
+Linux/macOS:
 
 ```bash
 python -m app.main
 ```
 
-### 5. Rode os testes
+### 6. Rode os testes
+
+Windows PowerShell:
+
+```powershell
+python -m pytest
+```
+
+Linux/macOS:
 
 ```bash
 python -m pytest
 ```
 
-Resumo bem direto:
+Resumo curto:
 
-- `alembic upgrade head` prepara a estrutura do banco
-- `python -m app.main` executa uma rodada do pipeline
-- `python -m pytest` valida se o projeto continua funcionando
+- `ollama serve` sobe o servidor do Ollama
+- `ollama run llama3` carrega o modelo
+- `alembic upgrade head` prepara o banco
+- `python -m app.main` roda uma execucao do pipeline
 
 ## O Que Ja Funciona
 
@@ -71,10 +181,9 @@ Resumo bem direto:
 - coleta por `api` quando `NEWS_API_KEY` estiver preenchida
 - persistencia de noticias brutas em `raw_articles`
 - deduplicacao por `original_url`, titulo normalizado e `content_hash`
-- limite de ate `3` noticias brutas variadas por fonte em cada rodada
+- limite de ate `3` noticias brutas variadas por fonte por rodada
 - geracao de materia com Ollama local
-- salvamento de categoria e tags
-- salvamento de imagens e videos em `raw_articles` e `generated_articles`
+- salvamento de categoria, tags, imagens e videos
 - registro de falhas em `processing_failures`
 - testes automatizados da parte principal do fluxo
 
@@ -91,7 +200,7 @@ deduplicacao em raw_articles
    ->
 selecao de candidatos
    ->
-Ollama local
+Ollama
    ->
 generated_articles
    ->
@@ -101,34 +210,34 @@ generated_article_sources
 Regra importante:
 
 - a deduplicacao oficial acontece em `raw_articles`
-- `generated_articles` nao entra na comparacao semantica de duplicidade
-- `generated_article_sources` existe para impedir gerar duas vezes da mesma `raw_article`
+- `generated_articles` nao entra na comparacao semantica
+- `generated_article_sources` impede gerar duas vezes da mesma `raw_article`
 
 ## Estrutura Do Projeto
 
 ```text
 app/
-  main.py                  # entrada principal
-  config.py                # leitura e validacao do .env
-  db.py                    # engine e sessoes do SQLAlchemy
-  models.py                # modelos ORM
+  main.py
+  config.py
+  db.py
+  models.py
   ai/
-    ollama.py              # cliente da IA local
+    ollama.py
   collectors/
-    news_api.py            # coleta por API HTTP
-    rss.py                 # coleta por RSS/XML
-    json_feed.py           # coleta por JSON Feed
+    news_api.py
+    rss.py
+    json_feed.py
   core/
-    article_filters.py     # limpeza, normalizacao e heuristicas
-    pipeline.py            # orquestracao do fluxo principal
+    article_filters.py
+    pipeline.py
 migrations/
-  env.py                   # integracao do Alembic com o projeto
+  env.py
   versions/
     20260418_0001_initial_schema.py
 scripts/
-  migrations.py            # helper para comandos do Alembic
+  migrations.py
 prompts/
-  article.txt              # prompt usado pela IA
+  article.txt
 docs/
   EstruturaBasica.png
   BancoDeDados.png
@@ -141,48 +250,48 @@ tests/
   test_rss_collector.py
 ```
 
-## Papel De Cada Parte
+## O Papel De Cada Parte
 
 ### Aplicacao
 
 - `app/main.py`
-  Dispara uma rodada completa do pipeline.
+  Entrada principal. Dispara uma rodada do pipeline.
 - `app/config.py`
-  Le o `.env`, converte valores e expõe `settings`.
+  Le e valida o `.env`.
 - `app/db.py`
-  Centraliza conexao com banco e criacao de sessoes.
+  Configura engine e sessoes do SQLAlchemy.
 - `app/models.py`
-  Define as tabelas e relacoes do sistema.
+  Define as tabelas e relacoes ORM.
 
 ### Coletores
 
 - `app/collectors/rss.py`
-  Le feeds RSS e transforma cada item em `RawArticle`.
+  Coleta noticias de RSS/XML.
 - `app/collectors/json_feed.py`
-  Faz o mesmo para fontes em JSON Feed.
+  Coleta noticias de JSON Feed.
 - `app/collectors/news_api.py`
-  Coleta noticias de API HTTP quando houver chave configurada.
+  Coleta noticias de API HTTP.
 
 ### IA
 
 - `app/ai/ollama.py`
-  Monta o prompt, chama o Ollama e devolve um payload estruturado.
+  Monta o prompt, chama o Ollama e normaliza a resposta.
 
 ### Nucleo
 
 - `app/core/article_filters.py`
-  Faz limpeza de HTML, normalizacao, extracao de imagens e videos, filtros de qualidade e heuristicas simples.
+  Limpeza, normalizacao, extracao de midias e heuristicas simples.
 - `app/core/pipeline.py`
-  Junta tudo: coleta, deduplicacao, selecao, geracao e persistencia.
+  Orquestra coleta, deduplicacao, selecao, geracao e persistencia.
 
-### Banco
+### Banco e migrations
 
 - `migrations/env.py`
-  Liga o Alembic ao banco configurado no projeto.
+  Liga o Alembic ao projeto.
 - `migrations/versions/20260418_0001_initial_schema.py`
   Cria o schema inicial.
 - `scripts/migrations.py`
-  Atalho para os comandos mais comuns do Alembic.
+  Atalho para comandos do Alembic.
 
 ## Banco De Dados
 
@@ -205,133 +314,23 @@ Tabelas principais:
 
 O `.env` e a fonte oficial das configuracoes de execucao.
 
-- `.env` guarda valores visiveis de `api`, `rss`, `json_feed`, banco, IA e pipeline
-- `app/config.py` le e valida esses valores
-- os coletores usam apenas o que a `config.py` ja carregou
+- ele guarda banco, IA, fontes, pipeline e filtros
+- `app/config.py` le e converte esses valores
+- os coletores usam apenas o que a configuracao ja carregou
 
-Exemplo de `.env`:
-
-```env
-# =========================================================
-# App
-# Identificacao basica da aplicacao e ambiente atual.
-# APP_ENV pode ser development, test ou production.
-# =========================================================
-APP_NAME=NexusAI
-APP_ENV=development
-
-# =========================================================
-# Database
-# URL principal do PostgreSQL.
-# Formato esperado:
-# postgresql://usuario:senha@host:porta/nome_do_banco
-# DATABASE_ECHO=true mostra SQL no terminal para debug.
-# =========================================================
-DATABASE_URL=postgresql://postgres:12345@localhost:5432/nexusai
-DATABASE_ECHO=false
-
-# =========================================================
-# AI
-# Configuracao do provedor local de IA.
-# OLLAMA_MODEL e o modelo usado para gerar a materia.
-# OLLAMA_BASE_URL e a URL do servidor Ollama local.
-# OLLAMA_TIMEOUT_SECONDS e o tempo maximo por requisicao.
-# =========================================================
-OLLAMA_MODEL=llama3
-OLLAMA_BASE_URL=http://127.0.0.1:11434
-OLLAMA_TIMEOUT_SECONDS=180
-
-# =========================================================
-# API
-# Configuracao de fonte baseada em API HTTP.
-# Se NEWS_API_KEY ficar vazio, a coleta por API nao roda.
-# NEWS_API_SOURCE_NAME e o nome salvo em news_sources.
-# NEWS_API_URL define o endpoint principal da API.
-# NEWS_API_QUERY ajuda a filtrar o tema buscado.
-# NEWS_API_PAGE_SIZE controla quantos itens a API tenta trazer.
-# =========================================================
-NEWS_API_SOURCE_NAME=NewsAPI
-NEWS_API_KEY=
-NEWS_API_URL=https://newsapi.org/v2/top-headlines
-NEWS_API_COUNTRY=us
-NEWS_API_LANGUAGE=en
-NEWS_API_QUERY=technology
-NEWS_API_PAGE_SIZE=10
-
-# =========================================================
-# RSS
-# RSS_PAGE_SIZE define quantos itens por feed entram no lote bruto.
-# RSS_DEFAULT_FEEDS e a lista oficial de feeds RSS do projeto.
-# Formato:
-# Nome da Fonte|URL;Nome da Fonte|URL;...
-# =========================================================
-RSS_PAGE_SIZE=10
-RSS_DEFAULT_FEEDS=NASA RSS|https://www.nasa.gov/feed/;NASA Technology|https://www.nasa.gov/technology/feed/;NASA Artemis|https://www.nasa.gov/missions/artemis/feed/;ESA Science|https://sci.esa.int/newssyndication/rss/sciweb.xml;Camara Ultimas Noticias|https://www.camara.leg.br/noticias/rss/ultimas-noticias;Camara Politica|https://www.camara.leg.br/noticias/rss/dinamico/POLITICA;Senado Noticias|https://www12.senado.leg.br/noticias/rss;IBGE Agencia de Noticias|https://agenciadenoticias.ibge.gov.br/agencia-rss;G1|https://g1.globo.com/rss/g1/;Tecnoblog|https://tecnoblog.net/feed/;Canaltech|https://canaltech.com.br/rss/;Olhar Digital|https://olhardigital.com.br/feed/;InfoMoney|https://www.infomoney.com.br/feed/;Exame|https://exame.com/feed/;BBC News|http://feeds.bbci.co.uk/news/rss.xml;CNN|http://rss.cnn.com/rss/edition.rss;The Guardian World|https://www.theguardian.com/world/rss;NYT HomePage|https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml;TechCrunch|https://techcrunch.com/feed/;The Verge|https://www.theverge.com/rss/index.xml;Wired|https://www.wired.com/feed/rss;Ars Technica|http://feeds.arstechnica.com/arstechnica/index;ScienceDaily|https://www.sciencedaily.com/rss/all.xml
-
-# =========================================================
-# JSON Feed
-# Mesmo conceito do RSS, mas para fontes no padrao JSON Feed.
-# JSON_FEED_PAGE_SIZE define quantos itens por feed entram no lote bruto.
-# JSON_DEFAULT_FEEDS usa o mesmo formato:
-# Nome da Fonte|URL;Nome da Fonte|URL;...
-# =========================================================
-JSON_FEED_PAGE_SIZE=10
-JSON_DEFAULT_FEEDS=Daring Fireball|https://daringfireball.net/feeds/json
-
-# =========================================================
-# Pipeline
-# Regras principais da rodada de coleta e geracao.
-#
-# PIPELINE_MAX_ITEMS_PER_RUN
-# Quantidade maxima de materias finais que tentamos gerar por execucao.
-#
-# PIPELINE_CANDIDATE_POOL_MULTIPLIER
-# Multiplicador do pool de candidatos antes da geracao.
-#
-# PIPELINE_GENERATION_BUFFER
-# Buffer extra somado ao pool de candidatos.
-#
-# MAX_RAW_ARTICLES_PER_SOURCE
-# Limite de noticias brutas variadas por fonte em cada rodada.
-#
-# MAX_ARTICLES_PER_SOURCE_PER_RUN
-# Limite por fonte na etapa de selecao para geracao.
-#
-# MAX_ARTICLES_PER_CATEGORY_PER_RUN
-# Evita concentrar muitas materias finais na mesma categoria.
-#
-# MIN_DISTINCT_CATEGORIES_PER_RUN
-# Forca diversidade minima de categorias no lote gerado.
-#
-# DEDUPLICATION_LOOKBACK_DAYS
-# Janela de comparacao em raw_articles para titulo e content_hash.
-# A URL continua sendo comparada globalmente.
-# =========================================================
-PIPELINE_MAX_ITEMS_PER_RUN=12
-PIPELINE_CANDIDATE_POOL_MULTIPLIER=1
-PIPELINE_GENERATION_BUFFER=4
-MAX_RAW_ARTICLES_PER_SOURCE=3
-MAX_ARTICLES_PER_SOURCE_PER_RUN=3
-MAX_ARTICLES_PER_CATEGORY_PER_RUN=2
-MIN_DISTINCT_CATEGORIES_PER_RUN=2
-DEDUPLICATION_LOOKBACK_DAYS=15
-
-# =========================================================
-# Filters
-# Regras basicas para descartar material fraco, promocional ou ruidoso.
-# =========================================================
-MIN_TITLE_LENGTH=20
-MIN_CONTENT_LENGTH=40
-MIN_QUALITY_SCORE=1
-BLOCKED_TITLE_TERMS=webinar,sponsored,advertisement,press release
-BLOCKED_TITLE_PREFIXES=saiba como,confira,entenda como,veja como
-ALLOWED_CATEGORIES=Geral,Tecnologia,Ciencia,Espaco,Negocios,Politica,Saude,Esportes
-MAX_TAGS_PER_ARTICLE=5
-```
+O bloco de exemplo acima ja pode ser copiado para criar o arquivo local.
 
 ## Dependencias
 
 Instalacao:
+
+Windows PowerShell:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+Linux/macOS:
 
 ```bash
 python -m pip install -r requirements.txt
@@ -352,6 +351,19 @@ O projeto usa Alembic para versionar o schema do banco.
 
 Comandos principais:
 
+Windows PowerShell:
+
+```powershell
+alembic upgrade head
+alembic stamp head
+python scripts/migrations.py current
+python scripts/migrations.py history
+python scripts/migrations.py upgrade
+python scripts/migrations.py stamp
+```
+
+Linux/macOS:
+
 ```bash
 alembic upgrade head
 alembic stamp head
@@ -363,14 +375,20 @@ python scripts/migrations.py stamp
 
 Resumo:
 
-- `upgrade head`
-  aplica tudo que falta no banco
-- `stamp head`
-  marca o banco como atualizado sem executar DDL
+- `upgrade head` aplica o que falta no banco
+- `stamp head` marca o banco como atualizado sem executar DDL
 
 ## Execucao
 
 Para rodar o pipeline:
+
+Windows PowerShell:
+
+```powershell
+python -m app.main
+```
+
+Linux/macOS:
 
 ```bash
 python -m app.main
@@ -379,12 +397,20 @@ python -m app.main
 Importante:
 
 - `app.main` nao cria schema manualmente
-- a estrutura do banco deve estar alinhada via Alembic
+- o banco deve estar alinhado via Alembic
 - em banco novo, rode antes `alembic upgrade head`
 
 ## Testes
 
 Para rodar todos os testes:
+
+Windows PowerShell:
+
+```powershell
+python -m pytest
+```
+
+Linux/macOS:
 
 ```bash
 python -m pytest
