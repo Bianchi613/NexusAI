@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.config import settings
 import app.core.pipeline as pipeline_module
-from app.ai.ollama import GeneratedArticlePayload
+from app.ai.ollama import GeneratedArticlePayload, OllamaClient
 from app.core.pipeline import NewsPipeline
 from app.models import Base, GeneratedArticle, NewsSource, RawArticle
 
@@ -203,3 +203,54 @@ def test_pipeline_run_persists_all_raw_articles_before_limiting_generation(monke
         settings.pipeline_candidate_pool_multiplier = original_multiplier
         settings.pipeline_generation_buffer = original_buffer
         settings.max_raw_articles_per_source = original_max_raw_per_source
+
+
+def test_ollama_generation_plan_scales_with_source_richness() -> None:
+    """Fontes mais ricas devem permitir corpo final maior."""
+    client = OllamaClient()
+
+    short_article = RawArticle(
+        original_title="Titulo curto",
+        original_url="https://example.com/short",
+        original_description="Descricao curta mas suficiente para teste.",
+        original_content="Texto curto com poucas sentencas.",
+    )
+    rich_article = RawArticle(
+        original_title="Titulo rico",
+        original_url="https://example.com/rich",
+        original_description="Descricao inicial.",
+        original_content=" ".join(
+            [f"Paragrafo {index} com detalhes relevantes sobre a materia e seus desdobramentos." for index in range(1, 80)]
+        ),
+    )
+
+    short_plan = client._build_generation_plan(short_article)
+    rich_plan = client._build_generation_plan(rich_article)
+
+    assert rich_plan.source_body_limit > short_plan.source_body_limit
+    assert rich_plan.target_body_max > short_plan.target_body_max
+    assert rich_plan.target_body_min > short_plan.target_body_min
+
+
+def test_ollama_parse_model_response_respects_adaptive_body_limit() -> None:
+    """O corpo final deve respeitar o teto adaptativo definido para a materia."""
+    client = OllamaClient()
+    raw_article = RawArticle(
+        original_title="Titulo base",
+        original_url="https://example.com/story",
+        original_description="Descricao base para o teste do cliente.",
+        original_content=" ".join(
+            [f"Paragrafo {index} com bastante contexto adicional para permitir corpo mais longo." for index in range(1, 50)]
+        ),
+    )
+    plan = client._build_generation_plan(raw_article)
+    oversized_body = " ".join(["corpo jornalistico desenvolvido"] * 600)
+    raw_response = (
+        '{"title":"Titulo final", "summary":"Resumo informativo com contexto suficiente.", '
+        f'"body":"{oversized_body}", "category":"Tecnologia", "tags":["IA","Mercado"]}}'
+    )
+
+    parsed = client._parse_model_response(raw_response, raw_article, plan)
+
+    assert len(parsed["body"]) <= plan.target_body_max + 3
+    assert parsed["title"] == "Titulo final"

@@ -23,6 +23,7 @@ from app.core.article_filters import (
     is_probably_english_text,
     is_suspicious_generated_text,
     normalize_generated_title,
+    remove_structured_noise,
     repair_text_encoding,
     sanitize_article_text,
     truncate_text,
@@ -39,7 +40,20 @@ class GeneratedArticlePayload:
     body: str
     category: str
     tags: List[str]
-    prompt_version: str = "article_v1"
+    prompt_version: str = "article_v2"
+
+
+@dataclass
+class GenerationPlan:
+    """Parametros adaptativos para equilibrar contexto, tamanho e qualidade."""
+
+    source_summary_limit: int
+    source_body_limit: int
+    fallback_body_limit: int
+    target_body_min: int
+    target_body_max: int
+    paragraph_range: str
+    prompt_version: str = "article_v2"
 
 
 class OllamaClient:
@@ -47,12 +61,14 @@ class OllamaClient:
 
     def generate_article(self, raw_article: RawArticle, prompt_template: str) -> GeneratedArticlePayload:
         """Gera uma materia estruturada a partir de uma noticia bruta."""
-        prompt = self._build_prompt(raw_article, prompt_template)
-        structured = self._request_and_parse(prompt, raw_article)
+        plan = self._build_generation_plan(raw_article)
+        prompt = self._build_prompt(raw_article, prompt_template, plan)
+        structured = self._request_and_parse(prompt, raw_article, plan)
 
-        if self._should_retry_in_portuguese(structured, raw_article):
-            retry_prompt = self._build_retry_prompt(raw_article, prompt_template, structured)
-            structured = self._request_and_parse(retry_prompt, raw_article)
+        retry_reason = self._get_retry_reason(structured, raw_article, plan)
+        if retry_reason is not None:
+            retry_prompt = self._build_retry_prompt(raw_article, prompt_template, structured, plan, retry_reason)
+            structured = self._request_and_parse(retry_prompt, raw_article, plan)
 
         return GeneratedArticlePayload(
             title=structured["title"],
@@ -60,9 +76,56 @@ class OllamaClient:
             body=structured["body"],
             category=structured.get("category") or "geral",
             tags=structured.get("tags") or [],
+            prompt_version=plan.prompt_version,
         )
 
-    def _request_and_parse(self, prompt: str, raw_article: RawArticle) -> dict[str, Any]:
+    def _build_generation_plan(self, raw_article: RawArticle) -> GenerationPlan:
+        """Define limites maiores ou menores conforme a riqueza da fonte."""
+        source_text = remove_structured_noise(raw_article.original_content) or remove_structured_noise(
+            raw_article.original_description
+        )
+        source_length = len(source_text)
+
+        if source_length >= 2600:
+            return GenerationPlan(
+                source_summary_limit=700,
+                source_body_limit=5200,
+                fallback_body_limit=3200,
+                target_body_min=2200,
+                target_body_max=4200,
+                paragraph_range="5 a 7",
+            )
+
+        if source_length >= 1400:
+            return GenerationPlan(
+                source_summary_limit=600,
+                source_body_limit=4200,
+                fallback_body_limit=2600,
+                target_body_min=1600,
+                target_body_max=3200,
+                paragraph_range="4 a 6",
+            )
+
+        if source_length >= 700:
+            return GenerationPlan(
+                source_summary_limit=520,
+                source_body_limit=3200,
+                fallback_body_limit=2200,
+                target_body_min=1100,
+                target_body_max=2400,
+                paragraph_range="3 a 5",
+            )
+
+        return GenerationPlan(
+            source_summary_limit=420,
+            source_body_limit=2400,
+            fallback_body_limit=1700,
+            target_body_min=800,
+            target_body_max=1800,
+            paragraph_range="3 a 4",
+        )
+
+    def _request_and_parse(self, prompt: str, raw_article: RawArticle, plan: GenerationPlan) -> dict[str, Any]:
         """Executa a chamada HTTP ao Ollama e devolve o JSON normalizado."""
         response = requests.post(
             f"{settings.ollama_base_url.rstrip('/')}/api/generate",
@@ -77,16 +140,30 @@ class OllamaClient:
         response.raise_for_status()
 
         payload = response.json()
-        return self._parse_model_response(payload.get("response", "{}"), raw_article)
+        return self._parse_model_response(payload.get("response", "{}"), raw_article, plan)
 
-    def _build_prompt(self, raw_article: RawArticle, prompt_template: str) -> str:
-        """Consolida prompt base e contexto da materia original."""
-        source_description = build_source_summary(raw_article.original_description, raw_article.original_content, limit=500)
-        source_content = build_source_body(raw_article.original_content, raw_article.original_description, limit=2500)
+    def _build_prompt(self, raw_article: RawArticle, prompt_template: str, plan: GenerationPlan) -> str:
+        """Consolida prompt base, metas de tamanho e contexto da materia original."""
+        source_description = build_source_summary(
+            raw_article.original_description,
+            raw_article.original_content,
+            limit=plan.source_summary_limit,
+        )
+        source_content = build_source_body(
+            raw_article.original_content,
+            raw_article.original_description,
+            limit=plan.source_body_limit,
+        )
         return (
             f"{prompt_template}\n\n"
             "Responda somente com JSON valido no formato:\n"
             '{"title":"", "summary":"", "body":"", "category":"", "tags":[""]}\n\n'
+            "TAMANHO DESEJADO:\n"
+            "- summary: 320 a 600 caracteres, direto e informativo\n"
+            f"- body: aproximadamente {plan.target_body_min} a {plan.target_body_max} caracteres\n"
+            f"- body com {plan.paragraph_range} paragrafos curtos ou medios\n"
+            "- se a fonte for curta, aproveite ao maximo as informacoes disponiveis sem inventar fatos\n"
+            "- nao repita a mesma ideia em varias frases so para aumentar tamanho\n\n"
             f"TITULO ORIGINAL: {raw_article.original_title}\n"
             f"DESCRICAO ORIGINAL: {source_description}\n"
             f"AUTOR ORIGINAL: {raw_article.original_author or ''}\n"
@@ -99,30 +176,41 @@ class OllamaClient:
         raw_article: RawArticle,
         prompt_template: str,
         previous_payload: dict[str, Any],
+        plan: GenerationPlan,
+        retry_reason: str,
     ) -> str:
-        """Forca uma segunda tentativa quando a primeira saiu em ingles ou mojibake."""
+        """Forca uma segunda tentativa quando a primeira resposta nao ficou boa."""
         draft_json = json.dumps(previous_payload, ensure_ascii=False)
         return (
-            f"{self._build_prompt(raw_article, prompt_template)}\n"
+            f"{self._build_prompt(raw_article, prompt_template, plan)}\n"
             "ATENCAO EXTRA:\n"
-            "- a resposta anterior violou a regra de portugues do Brasil ou veio com encoding quebrado\n"
+            f"- a resposta anterior teve este problema principal: {retry_reason}\n"
             "- reescreva TODOS os campos em portugues do Brasil natural\n"
             "- use acentuacao UTF-8 correta\n"
-            "- nunca devolva palavras quebradas como lanÃ§amento, ambiÃ§Ã£o ou Lua\n"
+            "- nunca devolva palavras quebradas como lanÃ§amento, ambiÃ§Ã£o ou informaÃ§Ã£o\n"
             "- se a fonte original estiver em ingles, traduza o sentido para portugues do Brasil\n"
+            "- entregue um body jornalistico mais desenvolvido, sem inflar artificialmente o texto\n"
             "- responda somente com JSON valido\n\n"
             f"RASCUNHO ANTERIOR:\n{draft_json}\n"
         )
 
-    def _parse_model_response(self, raw_response: str, raw_article: RawArticle) -> dict[str, Any]:
+    def _parse_model_response(self, raw_response: str, raw_article: RawArticle, plan: GenerationPlan) -> dict[str, Any]:
         """Faz parsing defensivo e aplica fallbacks quando a IA falha."""
         try:
             payload = json.loads(raw_response)
         except json.JSONDecodeError:
             payload = {}
 
-        fallback_summary = build_source_summary(raw_article.original_description, raw_article.original_content)
-        fallback_body = build_source_body(raw_article.original_content, raw_article.original_description)
+        fallback_summary = build_source_summary(
+            raw_article.original_description,
+            raw_article.original_content,
+            limit=plan.source_summary_limit,
+        )
+        fallback_body = build_source_body(
+            raw_article.original_content,
+            raw_article.original_description,
+            limit=plan.fallback_body_limit,
+        )
 
         title = self._as_text(payload.get("title")) or raw_article.original_title
         summary = self._as_optional_text(payload.get("summary")) or fallback_summary
@@ -134,14 +222,14 @@ class OllamaClient:
         cleaned_summary = self._sanitize_optional_text(summary)
         cleaned_body = sanitize_article_text(body)
 
-        if is_suspicious_generated_text(cleaned_summary, min_length=40):
+        if is_suspicious_generated_text(cleaned_summary, min_length=60):
             cleaned_summary = fallback_summary or None
 
-        if is_suspicious_generated_text(cleaned_body, min_length=80):
+        if is_suspicious_generated_text(cleaned_body, min_length=120):
             cleaned_body = fallback_body
 
-        cleaned_summary = truncate_text(cleaned_summary, 320) if cleaned_summary else None
-        cleaned_body = truncate_text(cleaned_body, 2000)
+        cleaned_summary = truncate_text(cleaned_summary, 420) if cleaned_summary else None
+        cleaned_body = truncate_text(cleaned_body, plan.target_body_max)
 
         return {
             "title": cleaned_title,
@@ -151,7 +239,12 @@ class OllamaClient:
             "tags": tags,
         }
 
-    def _should_retry_in_portuguese(self, structured: dict[str, Any], raw_article: RawArticle) -> bool:
+    def _get_retry_reason(
+        self,
+        structured: dict[str, Any],
+        raw_article: RawArticle,
+        plan: GenerationPlan,
+    ) -> Optional[str]:
         """Decide quando vale pedir ao modelo uma segunda resposta mais restrita."""
         fields_to_check = [
             structured.get("title"),
@@ -159,15 +252,11 @@ class OllamaClient:
             structured.get("body"),
         ]
         if any("Ã" in (field or "") or "�" in (field or "") for field in fields_to_check):
-            return True
+            return "encoding quebrado"
 
-        english_fields = sum(
-            1
-            for field in fields_to_check
-            if is_probably_english_text(field)
-        )
+        english_fields = sum(1 for field in fields_to_check if is_probably_english_text(field))
         if english_fields >= 2:
-            return True
+            return "texto ainda em ingles"
 
         generated_title = sanitize_article_text(structured.get("title"))
         source_title = sanitize_article_text(raw_article.original_title)
@@ -177,9 +266,17 @@ class OllamaClient:
             and generated_title.casefold() == source_title.casefold()
             and is_probably_english_text(generated_title, min_tokens=4)
         ):
-            return True
+            return "titulo permaneceu em ingles"
 
-        return False
+        body = sanitize_article_text(structured.get("body"))
+        source_body = remove_structured_noise(raw_article.original_content) or remove_structured_noise(
+            raw_article.original_description
+        )
+        minimum_expected = max(700, int(plan.target_body_min * 0.55))
+        if len(source_body) >= 1200 and len(body) < minimum_expected:
+            return "corpo curto demais para a riqueza da fonte"
+
+        return None
 
     def _normalize_tags(self, value: Any) -> List[str]:
         """Aceita tags como lista ou string separada por virgulas."""

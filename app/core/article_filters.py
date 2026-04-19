@@ -313,13 +313,30 @@ def first_sentences(value: Optional[str], *, max_sentences: int, max_chars: int)
 def build_source_summary(description: Optional[str], content: Optional[str], limit: int = 320) -> str:
     """Monta um resumo curto da materia de origem."""
     base = description or content
-    return first_sentences(base, max_sentences=2, max_chars=limit)
+    return first_sentences(base, max_sentences=3, max_chars=limit)
 
 
 def build_source_body(content: Optional[str], description: Optional[str], limit: int = 1400) -> str:
-    """Monta um corpo-base curto e limpo para o prompt da IA."""
-    base = content or description
-    return first_sentences(base, max_sentences=6, max_chars=limit)
+    """Monta um corpo-base mais rico e limpo para o prompt da IA."""
+    parts: list[str] = []
+
+    for candidate in (content, description):
+        cleaned = remove_structured_noise(candidate)
+        if not cleaned:
+            continue
+
+        normalized_cleaned = normalize_text(cleaned).lower()
+        if any(
+            normalized_cleaned in normalize_text(existing).lower()
+            or normalize_text(existing).lower() in normalized_cleaned
+            for existing in parts
+        ):
+            continue
+
+        parts.append(cleaned)
+
+    base = " ".join(parts) if parts else (content or description or "")
+    return first_sentences(base, max_sentences=12, max_chars=limit)
 
 
 def is_suspicious_generated_text(value: Optional[str], *, min_length: int = 30) -> bool:

@@ -7,6 +7,7 @@ Objetivos:
 - eliminar redundancias
 - reescrever o conteudo de forma original, sem copiar
 - destacar os pontos centrais do acontecimento
+- desenvolver a materia em alguns paragrafos quando houver informacao suficiente
 
 Regras obrigatorias:
 - responda somente com JSON valido
@@ -23,6 +24,10 @@ Regras obrigatorias:
 - nunca devolver palavras com codificacao quebrada como lanÃ§amento, ambiÃ§Ã£o ou informaÃ§Ã£o
 - nao deixar title em ingles quando houver forma natural em portugues
 - se o titulo original estiver em ingles, traduza de forma natural e jornalistica para portugues do Brasil
+- body deve ter desenvolvimento jornalistico em multiplos paragrafos quando a fonte trouxer base suficiente
+- se a fonte for curta, seja conciso sem inventar detalhes
+- nao repetir a mesma informacao em frases diferentes apenas para aumentar o tamanho do texto
+- cada paragrafo deve acrescentar informacao util, contexto ou desdobramento real presente na fonte
 
 Categoria:
 - sugerir apenas uma categoria
