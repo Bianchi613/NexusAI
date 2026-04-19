@@ -39,9 +39,6 @@ class RSSCollector:
     def _ensure_default_sources(self, session: Session) -> None:
         configured_feeds = list(settings.rss_default_feeds)
 
-        if not configured_feeds:
-            configured_feeds = [(settings.rss_default_source_name, settings.rss_default_feed_url)]
-
         for name, url in configured_feeds:
             source = session.scalar(select(NewsSource).where(NewsSource.base_url == url))
             if source is not None:

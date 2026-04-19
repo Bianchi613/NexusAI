@@ -26,6 +26,7 @@ O nucleo do projeto esta quase completo e ja cobre o basico combinado.
 - conexao com PostgreSQL
 - schema versionado com Alembic
 - leitura de configuracao por `.env`
+- fontes e parametros centralizados no `.env`
 - integracao com Ollama local
 - prompt externo em `prompts/article.txt`
 - coleta por RSS com varias fontes nacionais e internacionais
@@ -173,6 +174,8 @@ Observacoes importantes:
 - JSON Feed ja e suportado como formato nativo e pode ser configurado por `JSON_DEFAULT_FEEDS`
 - o projeto ja inclui como exemplo de `json_feed` a fonte `Daring Fireball`
 - sem `NEWS_API_KEY`, a parte de API HTTP nao roda, mas o pipeline continua funcional por RSS
+- as fontes padrao nao ficam mais hardcoded em arquivo Python
+- `RSS_DEFAULT_FEEDS` e `JSON_DEFAULT_FEEDS` no `.env` sao a fonte oficial de configuracao
 - hoje a deduplicacao oficial acontece somente em `raw_articles`
 - `generated_articles` nao entra na comparacao semantica de duplicidade
 
@@ -204,27 +207,37 @@ As regras ficam principalmente em [app/core/article_filters.py](/d:/Projetos/Nex
 Exemplo de `.env` alinhado com o estado atual do projeto:
 
 ```env
+# App
 APP_NAME=NexusAI
 APP_ENV=development
+
+# Database
 DATABASE_URL=postgresql://postgres:12345@localhost:5432/nexusai
 DATABASE_ECHO=false
+
+# AI
 OLLAMA_MODEL=llama3
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_TIMEOUT_SECONDS=180
+
+# API
+NEWS_API_SOURCE_NAME=NewsAPI
 NEWS_API_KEY=
 NEWS_API_URL=https://newsapi.org/v2/top-headlines
 NEWS_API_COUNTRY=us
 NEWS_API_LANGUAGE=en
 NEWS_API_QUERY=technology
 NEWS_API_PAGE_SIZE=10
-RSS_DEFAULT_FEED_URL=https://www.nasa.gov/feed/
-RSS_DEFAULT_SOURCE_NAME=NASA RSS
+
+# RSS
 RSS_PAGE_SIZE=10
-JSON_FEED_DEFAULT_URL=https://daringfireball.net/feeds/json
-JSON_FEED_DEFAULT_SOURCE_NAME=Daring Fireball
-JSON_FEED_PAGE_SIZE=10
 RSS_DEFAULT_FEEDS=NASA RSS|https://www.nasa.gov/feed/;NASA Technology|https://www.nasa.gov/technology/feed/;NASA Artemis|https://www.nasa.gov/missions/artemis/feed/;ESA Science|https://sci.esa.int/newssyndication/rss/sciweb.xml;Camara Ultimas Noticias|https://www.camara.leg.br/noticias/rss/ultimas-noticias;Camara Politica|https://www.camara.leg.br/noticias/rss/dinamico/POLITICA;Senado Noticias|https://www12.senado.leg.br/noticias/rss;IBGE Agencia de Noticias|https://agenciadenoticias.ibge.gov.br/agencia-rss;G1|https://g1.globo.com/rss/g1/;Tecnoblog|https://tecnoblog.net/feed/;Canaltech|https://canaltech.com.br/rss/;Olhar Digital|https://olhardigital.com.br/feed/;InfoMoney|https://www.infomoney.com.br/feed/;Exame|https://exame.com/feed/;BBC News|http://feeds.bbci.co.uk/news/rss.xml;CNN|http://rss.cnn.com/rss/edition.rss;The Guardian World|https://www.theguardian.com/world/rss;NYT HomePage|https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml;TechCrunch|https://techcrunch.com/feed/;The Verge|https://www.theverge.com/rss/index.xml;Wired|https://www.wired.com/feed/rss;Ars Technica|http://feeds.arstechnica.com/arstechnica/index;ScienceDaily|https://www.sciencedaily.com/rss/all.xml
+
+# JSON Feed
+JSON_FEED_PAGE_SIZE=10
 JSON_DEFAULT_FEEDS=Daring Fireball|https://daringfireball.net/feeds/json
+
+# Pipeline
 PIPELINE_MAX_ITEMS_PER_RUN=12
 PIPELINE_CANDIDATE_POOL_MULTIPLIER=1
 PIPELINE_GENERATION_BUFFER=4
@@ -233,6 +246,8 @@ MAX_ARTICLES_PER_SOURCE_PER_RUN=3
 MAX_ARTICLES_PER_CATEGORY_PER_RUN=2
 MIN_DISTINCT_CATEGORIES_PER_RUN=2
 DEDUPLICATION_LOOKBACK_DAYS=15
+
+# Filters
 MIN_TITLE_LENGTH=20
 MIN_CONTENT_LENGTH=40
 MIN_QUALITY_SCORE=1
@@ -241,6 +256,13 @@ BLOCKED_TITLE_PREFIXES=saiba como,confira,entenda como,veja como
 ALLOWED_CATEGORIES=Geral,Tecnologia,Ciencia,Espaco,Negocios,Politica,Saude,Esportes
 MAX_TAGS_PER_ARTICLE=5
 ```
+
+Organizacao atual:
+
+- `.env` e a fonte oficial das configuracoes visiveis de `api`, `rss` e `json_feed`
+- `app/config.py` centraliza a leitura e a validacao dessas configuracoes
+- os coletores consomem apenas os valores ja lidos pela `config.py`
+- fallbacks antigos de fontes foram removidos para evitar configuracao duplicada
 
 ## Dependencias
 
@@ -418,11 +440,16 @@ Para rodar:
 python -m pytest
 ```
 
+Status mais recente de validacao:
+
+- `15` testes passando apos a limpeza da configuracao e remocao dos fallbacks antigos
+
 ## Observacoes
 
 - `PIPELINE_MAX_ITEMS_PER_RUN` controla quantos artigos entram em cada rodada do Ollama
 - o valor padrao atual esta em `12`
 - `MAX_RAW_ARTICLES_PER_SOURCE` controla quantas noticias brutas variadas por fonte entram por rodada
+- `PIPELINE_CANDIDATE_POOL_MULTIPLIER` e `PIPELINE_GENERATION_BUFFER` controlam o tamanho do pool de candidatos antes da geracao
 - `DEDUPLICATION_LOOKBACK_DAYS` controla a janela de comparacao de titulo e hash em `raw_articles`
 - `OLLAMA_TIMEOUT_SECONDS` foi aumentado para reduzir abortos em artigos lentos
 - falhas de um artigo nao interrompem a rodada inteira

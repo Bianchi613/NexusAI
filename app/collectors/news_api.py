@@ -38,7 +38,7 @@ class NewsAPICollector:
 
     def _create_default_source(self, session: Session) -> NewsSource:
         source = NewsSource(
-            name="NewsAPI",
+            name=settings.news_api_source_name,
             base_url=settings.news_api_url,
             source_type="api",
             is_active=True,

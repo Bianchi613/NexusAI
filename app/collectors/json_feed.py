@@ -35,9 +35,6 @@ class JSONFeedCollector:
     def _ensure_default_sources(self, session: Session) -> None:
         configured_feeds = list(settings.json_default_feeds)
 
-        if not configured_feeds and settings.json_feed_default_url.strip():
-            configured_feeds = [(settings.json_feed_default_source_name, settings.json_feed_default_url)]
-
         for name, url in configured_feeds:
             source = session.scalar(select(NewsSource).where(NewsSource.base_url == url))
             if source is not None:
