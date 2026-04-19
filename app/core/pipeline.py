@@ -23,6 +23,7 @@ from app.collectors.rss import RSSCollector
 from app.config import settings
 from app.core.article_filters import (
     are_titles_similar,
+    build_fallback_tags,
     guess_category_from_article,
     normalize_label,
     normalize_title,
@@ -177,6 +178,45 @@ class NewsPipeline:
             tag_ids.append(tag.id)
 
         return tag_ids
+
+    def _resolve_tag_names(
+        self,
+        payload: GeneratedArticlePayload,
+        raw_article: RawArticle,
+        source_name: str | None,
+    ) -> List[str]:
+        """Combina tags da IA com fallback local para nunca deixar a materia vazia."""
+        resolved_tags: List[str] = []
+        seen_slugs: set[str] = set()
+
+        def append_tag(name: str) -> None:
+            normalized_name = normalize_label(name)
+            if not normalized_name:
+                return
+
+            slug = slugify(normalized_name)
+            if not slug or slug in seen_slugs:
+                return
+
+            seen_slugs.add(slug)
+            resolved_tags.append(normalized_name)
+
+        for tag_name in payload.tags:
+            append_tag(tag_name)
+
+        fallback_tags = build_fallback_tags(
+            title=payload.title or raw_article.original_title,
+            summary=payload.summary or raw_article.original_description,
+            category=payload.category,
+            source_name=source_name,
+            max_tags=settings.max_tags_per_article,
+        )
+        for tag_name in fallback_tags:
+            if len(resolved_tags) >= settings.max_tags_per_article:
+                break
+            append_tag(tag_name)
+
+        return resolved_tags[: settings.max_tags_per_article]
 
     def _normalize_category_name(self, name: str) -> str:
         """Normaliza categoria gerada e limita ao conjunto permitido."""
@@ -547,7 +587,9 @@ class NewsPipeline:
     ) -> GeneratedArticle:
         """Persiste a materia final e cria o vinculo com a noticia bruta."""
         category = self._get_or_create_category(session, payload.category)
-        tag_ids = self._get_or_create_tag_ids(session, payload.tags)
+        source = session.get(NewsSource, raw_article.source_id) if raw_article.source_id is not None else None
+        resolved_tag_names = self._resolve_tag_names(payload, raw_article, source.name if source else None)
+        tag_ids = self._get_or_create_tag_ids(session, resolved_tag_names)
 
         generated_article = GeneratedArticle(
             title=payload.title,

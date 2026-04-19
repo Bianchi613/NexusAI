@@ -99,7 +99,7 @@ class RSSCollector:
 
     def _normalize_item(self, source_id: int, item: ET.Element) -> Optional[RawArticle]:
         """Transforma um `<item>` RSS em `RawArticle` filtrado."""
-        title = self._text(item.find("title"))
+        title = sanitize_article_text(self._text(item.find("title")))
         url = normalize_url(self._text(item.find("link")))
         raw_description = self._text(item.find("description"))
         description = sanitize_article_text(raw_description)
@@ -158,9 +158,7 @@ class RSSCollector:
 
     def _sanitize_xml(self, content: bytes) -> bytes:
         """Corrige pequenas sujeiras de XML antes do parse."""
-        text = content.decode("utf-8", errors="replace")
-        text = text.replace("&nbsp;", " ")
-        return text.encode("utf-8")
+        return content.replace(b"&nbsp;", b" ").replace(b"\x00", b"")
 
     def _extract_image_urls(self, item: ET.Element, raw_description: Optional[str]) -> list[str]:
         """Extrai imagens de `enclosure`, media RSS e HTML embutido."""

@@ -19,6 +19,8 @@ Regras obrigatorias:
 - escrever todos os campos do JSON em portugues do Brasil
 - title, summary e body devem sempre sair em portugues do Brasil, mesmo quando a fonte original estiver em ingles
 - category e tags tambem devem ser devolvidas em portugues do Brasil
+- usar acentuacao correta em UTF-8
+- nunca devolver palavras com codificacao quebrada como lanÃ§amento, ambiÃ§Ã£o ou informaÃ§Ã£o
 - nao deixar title em ingles quando houver forma natural em portugues
 - se o titulo original estiver em ingles, traduza de forma natural e jornalistica para portugues do Brasil
 

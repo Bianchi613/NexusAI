@@ -64,13 +64,161 @@ TITLE_SIMILARITY_STOPWORDS = {
     "its",
 }
 
+MOJIBAKE_MARKERS = (
+    "Ã",
+    "Â",
+    "â€",
+    "â€™",
+    "â€œ",
+    "â€\x9d",
+    "â€“",
+    "â€”",
+    "�",
+)
+
+PORTUGUESE_LANGUAGE_HINTS = {
+    "de",
+    "da",
+    "do",
+    "das",
+    "dos",
+    "para",
+    "com",
+    "sem",
+    "como",
+    "mais",
+    "apos",
+    "segundo",
+    "sobre",
+    "entre",
+    "pelo",
+    "pela",
+    "brasil",
+}
+
+ENGLISH_LANGUAGE_HINTS = {
+    "the",
+    "and",
+    "with",
+    "from",
+    "after",
+    "before",
+    "year",
+    "years",
+    "says",
+    "say",
+    "said",
+    "given",
+    "term",
+    "news",
+    "new",
+    "world",
+    "review",
+    "continue",
+    "reading",
+}
+
+FALLBACK_TAG_STOPWORDS = {
+    "a",
+    "as",
+    "o",
+    "os",
+    "de",
+    "do",
+    "da",
+    "dos",
+    "das",
+    "e",
+    "em",
+    "no",
+    "na",
+    "nos",
+    "nas",
+    "para",
+    "por",
+    "com",
+    "sem",
+    "sobre",
+    "apos",
+    "nesta",
+    "neste",
+    "sexta-feira",
+    "video",
+    "vídeo",
+    "contra",
+    "entre",
+    "video",
+    "videos",
+    "noticia",
+    "noticias",
+    "news",
+    "rss",
+    "new",
+    "nova",
+    "novo",
+    "novos",
+    "novas",
+    "hoje",
+    "teria",
+    "apos",
+}
+
+
+def _encoding_badness_score(value: str) -> int:
+    """Mede sinais comuns de texto corrompido por encoding."""
+    score = 0
+    for marker in MOJIBAKE_MARKERS:
+        score += value.count(marker) * 3
+    score += value.count("\ufffd") * 5
+    return score
+
+
+def repair_text_encoding(value: Optional[str]) -> str:
+    """Tenta corrigir mojibake simples como `lanÃ§amento` -> `lançamento`."""
+    if not value:
+        return ""
+
+    text = value.strip()
+    if not text:
+        return ""
+
+    if not any(marker in text for marker in MOJIBAKE_MARKERS):
+        return text
+
+    candidates = [text]
+    for source_encoding in ("latin1", "cp1252"):
+        try:
+            candidates.append(text.encode(source_encoding).decode("utf-8"))
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            continue
+
+    best_candidate = min(candidates, key=_encoding_badness_score)
+    if _encoding_badness_score(best_candidate) < _encoding_badness_score(text):
+        return best_candidate
+    return text
+
+
+def is_probably_english_text(value: Optional[str], *, min_tokens: int = 5) -> bool:
+    """Heuristica leve para detectar saidas longas em ingles."""
+    normalized = normalize_text(repair_text_encoding(value)).lower()
+    if not normalized:
+        return False
+
+    tokens = re.findall(r"[a-z]+", normalized)
+    if len(tokens) < min_tokens:
+        return False
+
+    english_hits = sum(token in ENGLISH_LANGUAGE_HINTS for token in tokens)
+    portuguese_hits = sum(token in PORTUGUESE_LANGUAGE_HINTS for token in tokens)
+    return english_hits >= 2 and english_hits > portuguese_hits
+
 
 def normalize_text(value: Optional[str]) -> str:
     """Remove excesso de espacos e normaliza acentos para comparacoes."""
     if not value:
         return ""
 
-    collapsed = re.sub(r"\s+", " ", value).strip()
+    collapsed = re.sub(r"\s+", " ", repair_text_encoding(value)).strip()
     normalized = unicodedata.normalize("NFKD", collapsed).encode("ascii", "ignore").decode("ascii")
     return normalized
 
@@ -80,7 +228,7 @@ def strip_html(value: Optional[str]) -> str:
     if not value:
         return ""
 
-    text = html.unescape(value)
+    text = repair_text_encoding(html.unescape(value))
     text = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", text)
     text = re.sub(r"(?is)<table.*?>.*?</table>", " ", text)
     text = re.sub(r"(?i)<br\s*/?>", "\n", text)
@@ -97,7 +245,7 @@ def strip_html(value: Optional[str]) -> str:
 
 def sanitize_article_text(value: Optional[str]) -> str:
     """Aplica limpeza de HTML e remove ruido editorial comum nas fontes."""
-    text = strip_html(value)
+    text = repair_text_encoding(strip_html(value))
     text = re.sub(r"(?i)\bveja os v[ií]deos que est[aã]o em alta no g1\b", " ", text)
     text = re.sub(r"(?i)\breprodu[cç][aã]o\s*/?\s*[a-z0-9._-]+\b", " ", text)
     text = re.sub(r"(?i)\bsaiba mais sobre .*?$", " ", text)
@@ -475,7 +623,7 @@ def slugify(value: str) -> str:
 
 def normalize_label(value: str) -> str:
     """Padroniza labels para categoria e tag mantendo siglas curtas."""
-    cleaned = re.sub(r"\s+", " ", value).strip()
+    cleaned = repair_text_encoding(re.sub(r"\s+", " ", value)).strip()
     if not cleaned:
         return ""
 
@@ -487,6 +635,90 @@ def normalize_label(value: str) -> str:
             words.append(word.capitalize())
 
     return " ".join(words)
+
+
+def build_fallback_tags(
+    *,
+    title: Optional[str],
+    summary: Optional[str] = None,
+    category: Optional[str] = None,
+    source_name: Optional[str] = None,
+    max_tags: int = 5,
+) -> list[str]:
+    """Monta tags simples quando a IA nao devolver tags suficientes."""
+    candidates: list[str] = []
+    seen_slugs: set[str] = set()
+
+    def add_candidate(value: Optional[str]) -> None:
+        cleaned_value = sanitize_article_text(value).strip(" '\"“”‘’`.,;:-")
+        normalized = normalize_label(cleaned_value)
+        if not normalized:
+            return
+        if normalize_text(normalized).lower() in FALLBACK_TAG_STOPWORDS:
+            return
+        slug = slugify(normalized)
+        if not slug or slug in seen_slugs:
+            return
+        seen_slugs.add(slug)
+        candidates.append(normalized)
+
+    cleaned_source = sanitize_article_text(source_name)
+    if cleaned_source:
+        cleaned_source = re.sub(r"(?i)\b(noticias|news|rss)\b", " ", cleaned_source)
+        cleaned_source = re.sub(r"\s+", " ", cleaned_source).strip(" -:")
+        if cleaned_source:
+            add_candidate(cleaned_source)
+
+    cleaned_parts = [sanitize_article_text(part) for part in (title, summary) if part]
+    combined_text = " ".join(cleaned_parts)
+
+    for part in cleaned_parts:
+        for match in re.finditer(
+            r"\b[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][\wÁÀÂÃÉÊÍÓÔÕÚÇáàâãéêíóôõúç'-]+(?:\s+[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][\wÁÀÂÃÉÊÍÓÔÕÚÇáàâãéêíóôõúç'-]+){0,2}",
+            part,
+        ):
+            phrase = match.group(0).strip(" -:")
+            if len(phrase.split()) < 2:
+                continue
+            if normalize_text(phrase).lower() in FALLBACK_TAG_STOPWORDS:
+                continue
+            add_candidate(phrase)
+            if len(candidates) >= max_tags:
+                return candidates[:max_tags]
+
+    normalized_text = normalize_text(combined_text).lower()
+    for keyword, label in (
+        ("senado", "Senado"),
+        ("camara", "Camara"),
+        ("congresso", "Congresso"),
+        ("basquete", "Basquete"),
+        ("futebol", "Futebol"),
+        ("nasa", "NASA"),
+        ("artemis", "Artemis"),
+        ("ia", "IA"),
+        ("inteligencia artificial", "Inteligencia Artificial"),
+        ("blue origin", "Blue Origin"),
+    ):
+        if keyword in normalized_text:
+            add_candidate(label)
+            if len(candidates) >= max_tags:
+                return candidates[:max_tags]
+
+    for token in re.findall(r"[A-Za-zÁÀÂÃÉÊÍÓÔÕÚÇáàâãéêíóôõúç]{4,}", sanitize_article_text(title)):
+        normalized_token = normalize_text(token).lower()
+        if normalized_token in FALLBACK_TAG_STOPWORDS:
+            continue
+        add_candidate(token)
+        if len(candidates) >= max_tags:
+            return candidates[:max_tags]
+
+    if len(candidates) < 2 and category:
+        add_candidate(category)
+
+    if len(candidates) < 2:
+        add_candidate("Geral")
+
+    return candidates[:max_tags]
 
 
 def normalize_generated_title(title: Optional[str], source_title: Optional[str] = None) -> str:

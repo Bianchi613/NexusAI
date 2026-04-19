@@ -99,7 +99,7 @@ class NewsAPICollector:
     def _normalize_article(self, source_id: int, article: dict[str, Any]) -> Optional[RawArticle]:
         """Transforma o payload da API em um artigo bruto filtrado."""
         original_url = normalize_url(article.get("url"))
-        original_title = (article.get("title") or "").strip()
+        original_title = sanitize_article_text(article.get("title"))
         original_description = sanitize_article_text(article.get("description"))
         original_content = sanitize_article_text(article.get("content"))
         original_author = sanitize_article_text(article.get("author"))
