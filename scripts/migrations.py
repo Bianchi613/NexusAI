@@ -1,3 +1,9 @@
+"""Helper local para comandos comuns do Alembic.
+
+O objetivo e evitar lembrar a sintaxe completa de cada comando e padronizar o
+uso do Alembic dentro do projeto.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -7,12 +13,14 @@ from typing import Sequence
 
 
 def run_alembic(args: Sequence[str]) -> int:
+    """Executa `python -m alembic ...` e devolve o exit code."""
     command = [sys.executable, "-m", "alembic", *args]
     result = subprocess.run(command, check=False)
     return result.returncode
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Monta a CLI enxuta usada pelo helper de migrations."""
     parser = argparse.ArgumentParser(description="Helper para comandos do Alembic.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -34,6 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Resolve o subcomando pedido e o traduz para o Alembic."""
     parser = build_parser()
     args = parser.parse_args()
 

@@ -3,6 +3,15 @@
 Revision ID: 20260418_0001
 Revises: None
 Create Date: 2026-04-18 11:30:00
+
+Esta migration cria a estrutura inicial do projeto:
+- fontes
+- noticias brutas
+- materias geradas
+- categorias e tags
+- usuarios
+- relacao entre bruto e gerado
+- falhas de processamento
 """
 from __future__ import annotations
 
@@ -17,6 +26,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Cria todas as tabelas iniciais do schema."""
     op.create_table(
         "categories",
         sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
@@ -136,6 +146,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Remove todas as tabelas criadas na migration inicial."""
     op.drop_table("generated_article_sources")
     op.drop_table("processing_failures")
     op.drop_table("generated_articles")

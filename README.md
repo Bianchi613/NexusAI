@@ -118,6 +118,80 @@ pytest.ini
 .env
 ```
 
+## Arquitetura dos Arquivos
+
+Esta secao resume, de forma direta, a responsabilidade de cada arquivo relevante
+do projeto para facilitar manutencao, onboarding e futuras alteracoes.
+
+### Aplicacao principal
+
+- `app/main.py`
+  Entrada do backend. Dispara uma rodada completa do pipeline e imprime o total de materias geradas.
+- `app/config.py`
+  Le o `.env`, valida variaveis obrigatorias, converte tipos e expõe o objeto `settings` usado no restante do projeto.
+- `app/db.py`
+  Centraliza a conexao com o banco, o `engine` do SQLAlchemy e a fabrica de sessoes.
+- `app/models.py`
+  Define todo o schema ORM do projeto: fontes, noticias brutas, materias geradas, categorias, tags, usuarios e falhas.
+
+### Coletores
+
+- `app/collectors/rss.py`
+  Coleta feeds RSS/XML, cria fontes faltantes em `news_sources`, normaliza itens e separa imagens/videos.
+- `app/collectors/json_feed.py`
+  Faz o mesmo papel do RSS, mas para fontes no padrao JSON Feed.
+- `app/collectors/news_api.py`
+  Integra APIs HTTP de noticias, desde que `NEWS_API_KEY` esteja configurada.
+
+### Camada de IA
+
+- `app/ai/ollama.py`
+  Monta o prompt, chama o Ollama local, valida a resposta do modelo e devolve um payload estruturado pronto para persistencia.
+
+### Nucleo do pipeline
+
+- `app/core/article_filters.py`
+  Reune funcoes de limpeza, normalizacao, deduplicacao auxiliar, extracao de midias e heuristicas simples de categoria e similaridade.
+- `app/core/pipeline.py`
+  Orquestra o fluxo principal inteiro: coleta, deduplicacao, persistencia do bruto, selecao de candidatos, geracao com IA e log de falhas.
+
+### Banco e migrations
+
+- `alembic.ini`
+  Configuracao base do Alembic.
+- `migrations/env.py`
+  Liga o Alembic ao `settings.database_url` e a metadata do SQLAlchemy.
+- `migrations/versions/20260418_0001_initial_schema.py`
+  Migration inicial que cria o schema principal do projeto.
+- `scripts/migrations.py`
+  Helper local para rodar os comandos mais comuns do Alembic sem decorar toda a sintaxe.
+
+### Prompt e documentacao
+
+- `prompts/article.txt`
+  Prompt base usado para instruir a IA a gerar a materia final em formato estruturado.
+- `docs/EstruturaBasica.png`
+  Diagrama visual do fluxo principal do pipeline.
+- `docs/BancoDeDados.png`
+  Diagrama visual do modelo de dados.
+- `README.md`
+  Documentacao geral do projeto, arquitetura, configuracao, execucao e consultas uteis.
+
+### Testes
+
+- `tests/test_article_filters.py`
+  Valida limpeza e separacao de midias no modulo de filtros.
+- `tests/test_json_feed_collector.py`
+  Testa normalizacao de itens do coletor JSON Feed.
+- `tests/test_rss_collector.py`
+  Testa normalizacao de itens do coletor RSS.
+- `tests/test_pipeline_deduplication.py`
+  Valida as regras de deduplicacao do bruto contra `raw_articles`.
+- `tests/test_pipeline_diversity.py`
+  Garante variedade por fonte e categoria.
+- `tests/test_pipeline_selection.py`
+  Testa a logica de selecao, rotacao e tamanho do pool de candidatos.
+
 ## Banco de Dados
 
 O projeto usa PostgreSQL como banco principal.
@@ -263,6 +337,7 @@ Organizacao atual:
 - `app/config.py` centraliza a leitura e a validacao dessas configuracoes
 - os coletores consomem apenas os valores ja lidos pela `config.py`
 - fallbacks antigos de fontes foram removidos para evitar configuracao duplicada
+- os arquivos Python principais agora possuem docstrings descrevendo sua responsabilidade
 
 ## Dependencias
 

@@ -1,3 +1,5 @@
+"""Testes de diversidade por fonte e categoria dentro do pipeline."""
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -9,6 +11,7 @@ from app.models import Base, NewsSource, RawArticle
 
 
 def test_pipeline_selection_limits_same_source_to_three_articles() -> None:
+    """Garante o teto de itens por fonte na selecao para geracao."""
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(engine)
@@ -46,6 +49,7 @@ def test_pipeline_selection_limits_same_source_to_three_articles() -> None:
 
 
 def test_pipeline_limits_raw_articles_per_source_to_three_varied_items() -> None:
+    """Valida o limite de variedade por fonte ainda na etapa bruta."""
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(engine)
@@ -106,6 +110,7 @@ def test_pipeline_limits_raw_articles_per_source_to_three_varied_items() -> None
 
 
 def test_pipeline_generation_defers_repeated_category_until_diversity_exists(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Adia categorias repetidas para manter diversidade minima no lote."""
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(engine)

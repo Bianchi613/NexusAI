@@ -1,3 +1,12 @@
+"""Coletor de noticias no formato RSS/XML.
+
+Responsabilidades:
+- garantir que as fontes RSS do `.env` existam em `news_sources`
+- baixar cada feed ativo
+- converter cada item em `RawArticle`
+- separar midias de imagem e video ja no momento da coleta
+"""
+
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from email.utils import parsedate_to_datetime
@@ -24,7 +33,10 @@ from app.models import NewsSource, RawArticle
 
 
 class RSSCollector:
+    """Implementa a coleta de fontes RSS registradas no banco."""
+
     def collect(self, session: Session) -> List[RawArticle]:
+        """Coleta todos os artigos das fontes RSS ativas."""
         self._ensure_default_sources(session)
         sources = session.scalars(
             select(NewsSource).where(NewsSource.is_active.is_(True), NewsSource.source_type == "rss")
@@ -37,6 +49,7 @@ class RSSCollector:
         return raw_articles
 
     def _ensure_default_sources(self, session: Session) -> None:
+        """Sincroniza as fontes RSS do `.env` com a tabela `news_sources`."""
         configured_feeds = list(settings.rss_default_feeds)
 
         for name, url in configured_feeds:
@@ -56,6 +69,7 @@ class RSSCollector:
         session.flush()
 
     def _fetch_source_articles(self, source: NewsSource) -> List[RawArticle]:
+        """Baixa e normaliza os itens de um feed RSS especifico."""
         try:
             response = requests.get(
                 source.base_url,
@@ -84,6 +98,7 @@ class RSSCollector:
         return collected
 
     def _normalize_item(self, source_id: int, item: ET.Element) -> Optional[RawArticle]:
+        """Transforma um `<item>` RSS em `RawArticle` filtrado."""
         title = self._text(item.find("title"))
         url = normalize_url(self._text(item.find("link")))
         raw_description = self._text(item.find("description"))
@@ -126,12 +141,14 @@ class RSSCollector:
         )
 
     def _text(self, node: Optional[ET.Element]) -> Optional[str]:
+        """Le texto simples de um no XML, quando existir."""
         if node is None or node.text is None:
             return None
         value = node.text.strip()
         return value or None
 
     def _parse_datetime(self, value: Optional[str]) -> Optional[datetime]:
+        """Converte datas RFC822 de RSS para `datetime`."""
         if not value:
             return None
         try:
@@ -140,11 +157,13 @@ class RSSCollector:
             return None
 
     def _sanitize_xml(self, content: bytes) -> bytes:
+        """Corrige pequenas sujeiras de XML antes do parse."""
         text = content.decode("utf-8", errors="replace")
         text = text.replace("&nbsp;", " ")
         return text.encode("utf-8")
 
     def _extract_image_urls(self, item: ET.Element, raw_description: Optional[str]) -> list[str]:
+        """Extrai imagens de `enclosure`, media RSS e HTML embutido."""
         media_namespace = "{http://search.yahoo.com/mrss/}"
         collected: list[str] = []
 
@@ -168,6 +187,7 @@ class RSSCollector:
         return collect_image_urls(collected)
 
     def _extract_video_urls(self, item: ET.Element, raw_description: Optional[str]) -> list[str]:
+        """Extrai videos de `enclosure`, media RSS e HTML embutido."""
         media_namespace = "{http://search.yahoo.com/mrss/}"
         collected: list[str] = []
 

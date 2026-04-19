@@ -1,3 +1,11 @@
+"""Configuracao do ambiente Alembic.
+
+Este arquivo conecta o Alembic ao projeto atual:
+- carrega a URL de banco a partir do `settings`
+- informa a metadata dos modelos SQLAlchemy
+- suporta execucao offline e online
+"""
+
 from __future__ import annotations
 
 from logging.config import fileConfig
@@ -19,6 +27,7 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
+    """Executa migrations sem abrir conexao ativa com o banco."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -33,6 +42,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    """Executa migrations usando conexao real com o banco configurado."""
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

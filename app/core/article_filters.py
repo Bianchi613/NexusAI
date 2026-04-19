@@ -1,3 +1,13 @@
+"""Funcoes utilitarias de limpeza, normalizacao e filtros do pipeline.
+
+Este modulo e o "kit de higiene" do projeto. Ele concentra:
+- normalizacao de texto e URL
+- limpeza de HTML e ruido estrutural
+- extracao e deduplicacao de imagens e videos
+- regras de qualidade minima
+- heuristicas simples de similaridade e categoria
+"""
+
 import hashlib
 import html
 import re
@@ -16,6 +26,7 @@ TRACKING_QUERY_KEYS = {
     "source",
 }
 
+# Stopwords usadas apenas na heuristica simples de similaridade entre titulos.
 TITLE_SIMILARITY_STOPWORDS = {
     "a",
     "o",
@@ -55,6 +66,7 @@ TITLE_SIMILARITY_STOPWORDS = {
 
 
 def normalize_text(value: Optional[str]) -> str:
+    """Remove excesso de espacos e normaliza acentos para comparacoes."""
     if not value:
         return ""
 
@@ -64,6 +76,7 @@ def normalize_text(value: Optional[str]) -> str:
 
 
 def strip_html(value: Optional[str]) -> str:
+    """Remove tags HTML e preserva quebras de bloco relevantes."""
     if not value:
         return ""
 
@@ -83,6 +96,7 @@ def strip_html(value: Optional[str]) -> str:
 
 
 def sanitize_article_text(value: Optional[str]) -> str:
+    """Aplica limpeza de HTML e remove ruido editorial comum nas fontes."""
     text = strip_html(value)
     text = re.sub(r"(?i)\bveja os v[ií]deos que est[aã]o em alta no g1\b", " ", text)
     text = re.sub(r"(?i)\breprodu[cç][aã]o\s*/?\s*[a-z0-9._-]+\b", " ", text)
@@ -93,6 +107,7 @@ def sanitize_article_text(value: Optional[str]) -> str:
 
 
 def remove_structured_noise(value: Optional[str]) -> str:
+    """Corta blocos estruturados ou institucionais no final do texto."""
     text = sanitize_article_text(value)
     if not text:
         return ""
@@ -117,6 +132,7 @@ def remove_structured_noise(value: Optional[str]) -> str:
 
 
 def truncate_text(value: Optional[str], limit: int) -> str:
+    """Encurta texto preservando corte mais natural quando possivel."""
     text = remove_structured_noise(value)
     if len(text) <= limit:
         return text
@@ -126,6 +142,7 @@ def truncate_text(value: Optional[str], limit: int) -> str:
 
 
 def first_sentences(value: Optional[str], *, max_sentences: int, max_chars: int) -> str:
+    """Seleciona apenas as primeiras sentencas uteis de um texto longo."""
     text = remove_structured_noise(value)
     if not text:
         return ""
@@ -146,16 +163,19 @@ def first_sentences(value: Optional[str], *, max_sentences: int, max_chars: int)
 
 
 def build_source_summary(description: Optional[str], content: Optional[str], limit: int = 320) -> str:
+    """Monta um resumo curto da materia de origem."""
     base = description or content
     return first_sentences(base, max_sentences=2, max_chars=limit)
 
 
 def build_source_body(content: Optional[str], description: Optional[str], limit: int = 1400) -> str:
+    """Monta um corpo-base curto e limpo para o prompt da IA."""
     base = content or description
     return first_sentences(base, max_sentences=6, max_chars=limit)
 
 
 def is_suspicious_generated_text(value: Optional[str], *, min_length: int = 30) -> bool:
+    """Detecta saidas do modelo com cara de lixo, truncamento ou HTML cru."""
     text = sanitize_article_text(value)
     if not text:
         return True
@@ -169,6 +189,7 @@ def is_suspicious_generated_text(value: Optional[str], *, min_length: int = 30) 
 
 
 def normalize_title(value: Optional[str]) -> str:
+    """Normaliza titulo para comparacao exata aproximada."""
     normalized = normalize_text(value).lower()
     normalized = re.sub(r"[^a-z0-9\s]", " ", normalized)
     normalized = re.sub(r"\s+", " ", normalized).strip()
@@ -176,6 +197,7 @@ def normalize_title(value: Optional[str]) -> str:
 
 
 def normalize_url(value: Optional[str]) -> str:
+    """Padroniza URL e remove parametros de rastreamento."""
     if not value:
         return ""
 
@@ -199,11 +221,13 @@ def normalize_url(value: Optional[str]) -> str:
 
 
 def build_content_hash(url: Optional[str], title: Optional[str], content: Optional[str]) -> str:
+    """Gera hash estavel para apoiar deduplicacao de bruto."""
     base = f"{normalize_url(url)}|{normalize_title(title)}|{normalize_text(content).lower()}"
     return hashlib.sha256(base.encode("utf-8")).hexdigest()
 
 
 def extract_image_urls_from_html(value: Optional[str]) -> list[str]:
+    """Extrai imagens de HTML simples usando regex defensiva."""
     if not value:
         return []
 
@@ -212,6 +236,7 @@ def extract_image_urls_from_html(value: Optional[str]) -> list[str]:
 
 
 def extract_video_urls_from_html(value: Optional[str]) -> list[str]:
+    """Extrai videos e embeds de HTML simples."""
     if not value:
         return []
 
@@ -221,6 +246,7 @@ def extract_video_urls_from_html(value: Optional[str]) -> list[str]:
 
 
 def deduplicate_urls(values: list[str]) -> list[str]:
+    """Normaliza e remove URLs repetidas preservando ordem."""
     unique_urls: list[str] = []
     seen: set[str] = set()
 
@@ -235,6 +261,7 @@ def deduplicate_urls(values: list[str]) -> list[str]:
 
 
 def collect_image_urls(*values: Any) -> list[str]:
+    """Percorre estruturas heterogeneas e coleta apenas imagens."""
     collected: list[str] = []
 
     for value in values:
@@ -270,6 +297,7 @@ def collect_image_urls(*values: Any) -> list[str]:
 
 
 def collect_video_urls(*values: Any) -> list[str]:
+    """Percorre estruturas heterogeneas e coleta apenas videos."""
     collected: list[str] = []
 
     for value in values:
@@ -305,6 +333,7 @@ def collect_video_urls(*values: Any) -> list[str]:
 
 
 def is_probable_image_url(value: Optional[str]) -> bool:
+    """Heuristica simples para separar imagem de video/embed."""
     normalized = normalize_url(value)
     if not normalized:
         return False
@@ -339,6 +368,7 @@ def is_probable_image_url(value: Optional[str]) -> bool:
 
 
 def is_probable_video_url(value: Optional[str]) -> bool:
+    """Heuristica simples para identificar URL com cara de video."""
     normalized = normalize_url(value)
     if not normalized:
         return False
@@ -359,6 +389,7 @@ def is_probable_video_url(value: Optional[str]) -> bool:
 
 
 def score_article_quality(title: Optional[str], description: Optional[str], content: Optional[str]) -> int:
+    """Atribui um score minimo com base em completude do item bruto."""
     score = 0
 
     if len((title or "").strip()) >= 20:
@@ -372,6 +403,7 @@ def score_article_quality(title: Optional[str], description: Optional[str], cont
 
 
 def contains_blocked_term(title: Optional[str], blocked_terms: list[str]) -> bool:
+    """Verifica termos que sugerem publicidade ou baixo valor editorial."""
     normalized_title = normalize_title(title)
     if not normalized_title:
         return False
@@ -385,6 +417,7 @@ def contains_blocked_term(title: Optional[str], blocked_terms: list[str]) -> boo
 
 
 def starts_with_blocked_prefix(title: Optional[str], blocked_prefixes: list[str]) -> bool:
+    """Bloqueia prefixos com cara de clickbait ou texto promocional."""
     normalized_title = normalize_title(title)
     if not normalized_title:
         return False
@@ -409,6 +442,7 @@ def is_article_candidate(
     min_content_length: int,
     min_quality_score: int,
 ) -> bool:
+    """Decide se um item bruto merece seguir no pipeline."""
     if not title or not url:
         return False
 
@@ -433,12 +467,14 @@ def is_article_candidate(
 
 
 def slugify(value: str) -> str:
+    """Converte labels em slug simples e estavel."""
     normalized = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
     slug = re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-")
     return slug or "geral"
 
 
 def normalize_label(value: str) -> str:
+    """Padroniza labels para categoria e tag mantendo siglas curtas."""
     cleaned = re.sub(r"\s+", " ", value).strip()
     if not cleaned:
         return ""
@@ -454,6 +490,7 @@ def normalize_label(value: str) -> str:
 
 
 def normalize_generated_title(title: Optional[str], source_title: Optional[str] = None) -> str:
+    """Limpa e adapta titulos gerados para um tom mais editorial."""
     cleaned_title = sanitize_article_text(title)
     fallback_title = sanitize_article_text(source_title)
 
@@ -479,6 +516,7 @@ def normalize_generated_title(title: Optional[str], source_title: Optional[str] 
 
 
 def title_similarity_tokens(value: Optional[str]) -> set[str]:
+    """Quebra titulo em tokens relevantes para comparar sem stopwords."""
     normalized = normalize_title(value)
     tokens = {
         token
@@ -489,6 +527,7 @@ def title_similarity_tokens(value: Optional[str]) -> set[str]:
 
 
 def are_titles_similar(left: Optional[str], right: Optional[str]) -> bool:
+    """Heuristica simples de similaridade para evitar quase-duplicatas."""
     normalized_left = normalize_title(left)
     normalized_right = normalize_title(right)
     if not normalized_left or not normalized_right:
@@ -522,6 +561,7 @@ def guess_category_from_article(
     *,
     source_name: Optional[str] = None,
 ) -> str:
+    """Tenta inferir categoria com base em fonte, titulo e descricao."""
     text = normalize_title(" ".join(part for part in [source_name or "", title or "", description or ""] if part))
 
     keyword_groups = [

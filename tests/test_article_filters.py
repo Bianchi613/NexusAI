@@ -1,3 +1,5 @@
+"""Testes focados nas funcoes utilitarias de limpeza e extracao de midia."""
+
 from app.core.article_filters import (
     collect_image_urls,
     collect_video_urls,
@@ -8,6 +10,7 @@ from app.core.article_filters import (
 
 
 def test_collect_image_urls_deduplicates_and_normalizes() -> None:
+    """Garante que imagens repetidas sejam normalizadas e deduplicadas."""
     urls = collect_image_urls(
         "https://example.com/image.jpg?utm_source=test",
         "https://example.com/image.jpg",
@@ -21,6 +24,7 @@ def test_collect_image_urls_deduplicates_and_normalizes() -> None:
 
 
 def test_video_helpers_keep_video_separate_from_images() -> None:
+    """Confirma que embeds e videos nao vazam para a lista de imagens."""
     html = """
     <div>
       <iframe src="https://www.youtube.com/embed/abc123"></iframe>

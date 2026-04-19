@@ -1,9 +1,12 @@
+"""Testes do coletor RSS com foco na separacao de midias."""
+
 import xml.etree.ElementTree as ET
 
 from app.collectors.rss import RSSCollector
 
 
 def test_rss_normalize_item_separates_images_and_videos() -> None:
+    """Confirma que o RSS separa corretamente imagens e videos embutidos."""
     collector = RSSCollector()
     xml = """
     <item xmlns:media="http://search.yahoo.com/mrss/">

@@ -1,3 +1,12 @@
+"""Coletor de fontes no formato JSON Feed.
+
+O fluxo e equivalente ao do RSS, mas adaptado para feeds JSON:
+- registra fontes configuradas no `.env`
+- baixa o payload de cada feed
+- mapeia campos padrao para `RawArticle`
+- preserva imagens e videos encontrados em anexos e HTML
+"""
+
 from datetime import datetime
 from typing import Any, List, Optional
 
@@ -20,7 +29,10 @@ from app.models import NewsSource, RawArticle
 
 
 class JSONFeedCollector:
+    """Coleta e normaliza noticias vindas de JSON Feed."""
+
     def collect(self, session: Session) -> List[RawArticle]:
+        """Percorre todas as fontes JSON Feed ativas e coleta seus itens."""
         self._ensure_default_sources(session)
         sources = session.scalars(
             select(NewsSource).where(NewsSource.is_active.is_(True), NewsSource.source_type == "json_feed")
@@ -33,6 +45,7 @@ class JSONFeedCollector:
         return raw_articles
 
     def _ensure_default_sources(self, session: Session) -> None:
+        """Sincroniza as fontes JSON Feed do `.env` com `news_sources`."""
         configured_feeds = list(settings.json_default_feeds)
 
         for name, url in configured_feeds:
@@ -52,6 +65,7 @@ class JSONFeedCollector:
         session.flush()
 
     def _fetch_source_articles(self, source: NewsSource) -> List[RawArticle]:
+        """Baixa o JSON do feed e tenta normalizar os itens retornados."""
         try:
             response = requests.get(
                 source.base_url,
@@ -74,6 +88,7 @@ class JSONFeedCollector:
         return collected
 
     def _normalize_item(self, source_id: int, item: dict[str, Any]) -> Optional[RawArticle]:
+        """Transforma um item JSON Feed em `RawArticle` filtrado."""
         title = sanitize_article_text(item.get("title"))
         url = normalize_url(item.get("url") or item.get("external_url"))
         summary = sanitize_article_text(item.get("summary"))
@@ -124,6 +139,7 @@ class JSONFeedCollector:
         )
 
     def _extract_attachment_images(self, attachments: Any) -> list[str]:
+        """Coleta imagens a partir de anexos tipados como image/*."""
         if not isinstance(attachments, list):
             return []
 
@@ -138,6 +154,7 @@ class JSONFeedCollector:
         return image_urls
 
     def _extract_attachment_videos(self, attachments: Any) -> list[str]:
+        """Coleta videos a partir de anexos tipados como video/*."""
         if not isinstance(attachments, list):
             return []
 
@@ -152,6 +169,7 @@ class JSONFeedCollector:
         return video_urls
 
     def _extract_author(self, item: dict[str, Any]) -> Optional[str]:
+        """Normaliza autor simples ou lista de autores do JSON Feed."""
         author = sanitize_article_text(item.get("author"))
         if author:
             return author
@@ -166,6 +184,7 @@ class JSONFeedCollector:
         return None
 
     def _parse_datetime(self, value: Optional[str]) -> Optional[datetime]:
+        """Converte datas ISO8601 do JSON Feed."""
         if not value:
             return None
 

@@ -1,3 +1,14 @@
+"""Leitura e normalizacao das configuracoes do projeto.
+
+O modulo faz tres trabalhos principais:
+- carrega o `.env`
+- converte strings de ambiente em tipos Python adequados
+- entrega um objeto `settings` unico para o restante da aplicacao
+
+As fontes de coleta tambem sao configuradas aqui a partir do `.env`, para que
+RSS, JSON Feed e API fiquem visiveis e centralizados em um so lugar.
+"""
+
 import os
 from dataclasses import dataclass, field
 from typing import Optional
@@ -13,12 +24,14 @@ if load_dotenv is not None:
 
 
 def _as_bool(value: str, default: bool = False) -> bool:
+    """Converte valores de ambiente comuns em booleano."""
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _require_env(name: str) -> str:
+    """Exige que uma variavel exista e nao esteja vazia."""
     value = os.getenv(name)
     if value is None or not value.strip():
         raise ValueError(f"Variavel de ambiente obrigatoria ausente: {name}")
@@ -26,6 +39,7 @@ def _require_env(name: str) -> str:
 
 
 def _normalize_database_url(value: str) -> str:
+    """Normaliza a URL de banco para o driver usado pelo projeto."""
     if value.startswith("postgresql://"):
         normalized = value.replace("postgresql://", "postgresql+psycopg://", 1)
         parts = urlsplit(normalized)
@@ -37,11 +51,13 @@ def _normalize_database_url(value: str) -> str:
 
 
 def _parse_csv(value: Optional[str], default: str = "") -> list[str]:
+    """Converte listas simples separadas por virgula em `list[str]`."""
     raw_value = value if value is not None else default
     return [item.strip() for item in raw_value.split(",") if item.strip()]
 
 
 def _parse_feed_entries(value: Optional[str], default: str = "") -> list[tuple[str, str]]:
+    """Converte a sintaxe `Nome|URL;Nome|URL` em lista de tuplas."""
     raw_value = value if value is not None else default
     entries: list[tuple[str, str]] = []
 
@@ -61,6 +77,8 @@ def _parse_feed_entries(value: Optional[str], default: str = "") -> list[tuple[s
 
 @dataclass
 class Settings:
+    """Objeto imutavel por convencao com todas as configuracoes da aplicacao."""
+
     # App
     app_name: str = os.getenv("APP_NAME", "NexusAI")
     app_env: str = os.getenv("APP_ENV", "development")

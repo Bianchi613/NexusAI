@@ -1,3 +1,5 @@
+"""Testes da logica de selecao e rotacao de candidatos do pipeline."""
+
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine
@@ -11,6 +13,7 @@ from app.models import Base, GeneratedArticle, NewsSource, RawArticle
 
 
 def test_pipeline_selection_balances_source_types_before_repeating() -> None:
+    """A selecao tenta variar tipo de fonte antes de repetir o mesmo tipo."""
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(engine)
@@ -70,6 +73,7 @@ def test_pipeline_selection_balances_source_types_before_repeating() -> None:
 
 
 def test_pipeline_selection_rotates_types_on_later_runs() -> None:
+    """Em rodadas seguintes, a ordem de tipos deve rotacionar."""
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(engine)
@@ -108,6 +112,7 @@ def test_pipeline_selection_rotates_types_on_later_runs() -> None:
 
 
 def test_pipeline_candidate_limit_uses_small_buffer_for_generation() -> None:
+    """O pool de candidatos deve respeitar multiplicador e buffer configurados."""
     original_multiplier = settings.pipeline_candidate_pool_multiplier
     original_buffer = settings.pipeline_generation_buffer
 
@@ -124,6 +129,7 @@ def test_pipeline_candidate_limit_uses_small_buffer_for_generation() -> None:
 
 
 def test_pipeline_run_persists_all_raw_articles_before_limiting_generation(monkeypatch) -> None:
+    """Mesmo com limite de geracao, o bruto valido precisa ser persistido antes."""
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(engine)

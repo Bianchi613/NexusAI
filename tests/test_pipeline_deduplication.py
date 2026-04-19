@@ -1,3 +1,5 @@
+"""Testes das regras de deduplicacao do pipeline sobre `raw_articles`."""
+
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import create_engine
@@ -9,6 +11,7 @@ from app.models import Base, NewsSource, RawArticle
 
 
 def test_persist_raw_article_blocks_same_url_globally() -> None:
+    """A URL continua sendo deduplicada globalmente, mesmo fora do lookback."""
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(engine)
@@ -41,6 +44,7 @@ def test_persist_raw_article_blocks_same_url_globally() -> None:
 
 
 def test_persist_raw_article_blocks_recent_duplicate_title_only_within_lookback() -> None:
+    """Titulo igual recente bloqueia; titulo antigo fora da janela nao bloqueia."""
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(engine)
@@ -96,6 +100,7 @@ def test_persist_raw_article_blocks_recent_duplicate_title_only_within_lookback(
 
 
 def test_persist_raw_article_blocks_recent_duplicate_content_hash_only_within_lookback() -> None:
+    """`content_hash` recente bloqueia; fora do lookback nao bloqueia."""
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(engine)
@@ -152,7 +157,10 @@ def test_persist_raw_article_blocks_recent_duplicate_content_hash_only_within_lo
             assert persisted_old.original_url == "https://example.com/url-diferente-4"
     finally:
         settings.deduplication_lookback_days = original_lookback_days
+
+
 def test_prepare_generation_candidates_excludes_similar_articles_inside_same_batch() -> None:
+    """Remove quase-duplicatas do mesmo lote antes da geracao final."""
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(engine)

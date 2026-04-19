@@ -1,3 +1,15 @@
+"""Cliente da camada de IA usada para gerar a materia final.
+
+Este modulo:
+- recebe uma `RawArticle`
+- monta um prompt estruturado
+- chama o Ollama local
+- valida e higieniza a resposta retornada pelo modelo
+
+O objetivo aqui nao e decidir fluxo de negocio. O foco e transformar uma
+resposta do modelo em um payload seguro para persistencia.
+"""
+
 import json
 from dataclasses import dataclass
 from typing import Any, List, Optional
@@ -18,6 +30,8 @@ from app.models import RawArticle
 
 @dataclass
 class GeneratedArticlePayload:
+    """Representa a estrutura minima esperada da resposta da IA."""
+
     title: str
     summary: Optional[str]
     body: str
@@ -27,7 +41,10 @@ class GeneratedArticlePayload:
 
 
 class OllamaClient:
+    """Cliente HTTP enxuto para comunicacao com o Ollama local."""
+
     def generate_article(self, raw_article: RawArticle, prompt_template: str) -> GeneratedArticlePayload:
+        """Gera uma materia estruturada a partir de uma noticia bruta."""
         prompt = self._build_prompt(raw_article, prompt_template)
 
         response = requests.post(
@@ -54,6 +71,7 @@ class OllamaClient:
         )
 
     def _build_prompt(self, raw_article: RawArticle, prompt_template: str) -> str:
+        """Consolida prompt base e contexto da materia original."""
         source_description = build_source_summary(raw_article.original_description, raw_article.original_content, limit=500)
         source_content = build_source_body(raw_article.original_content, raw_article.original_description, limit=2500)
         return (
@@ -68,6 +86,7 @@ class OllamaClient:
         )
 
     def _parse_model_response(self, raw_response: str, raw_article: RawArticle) -> dict[str, Any]:
+        """Faz parsing defensivo e aplica fallbacks quando a IA falha."""
         try:
             payload = json.loads(raw_response)
         except json.JSONDecodeError:
@@ -104,6 +123,7 @@ class OllamaClient:
         }
 
     def _normalize_tags(self, value: Any) -> List[str]:
+        """Aceita tags como lista ou string separada por virgulas."""
         if isinstance(value, list):
             return [self._as_text(item) for item in value if self._as_text(item)]
         if isinstance(value, str) and value.strip():
@@ -111,14 +131,17 @@ class OllamaClient:
         return []
 
     def _as_text(self, value: Any) -> str:
+        """Converte valores soltos em string limpa."""
         if isinstance(value, str):
             return value.strip()
         return ""
 
     def _as_optional_text(self, value: Any) -> Optional[str]:
+        """Retorna `None` quando nao houver texto util."""
         text = self._as_text(value)
         return text or None
 
     def _sanitize_optional_text(self, value: Optional[str]) -> Optional[str]:
+        """Aplica a mesma sanitizacao do pipeline para campos opcionais."""
         text = sanitize_article_text(value)
         return text or None

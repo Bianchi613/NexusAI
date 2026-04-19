@@ -1,3 +1,10 @@
+"""Coletor de noticias vindas de API HTTP.
+
+Este coletor e opcional: ele so executa quando `NEWS_API_KEY` estiver definida.
+Assim como os demais coletores, o objetivo aqui e produzir `RawArticle`
+padronizado para o restante do pipeline.
+"""
+
 from datetime import datetime
 from typing import Any, List, Optional
 from urllib.parse import urlparse
@@ -19,7 +26,10 @@ from app.models import NewsSource, RawArticle
 
 
 class NewsAPICollector:
+    """Integra uma API de noticias baseada em HTTP/JSON."""
+
     def collect(self, session: Session) -> List[RawArticle]:
+        """Executa a coleta por API, se a credencial estiver configurada."""
         raw_articles: List[RawArticle] = []
         if not settings.news_api_key:
             return raw_articles
@@ -37,6 +47,7 @@ class NewsAPICollector:
         return raw_articles
 
     def _create_default_source(self, session: Session) -> NewsSource:
+        """Cria uma fonte `api` padrao quando ainda nao houver registro no banco."""
         source = NewsSource(
             name=settings.news_api_source_name,
             base_url=settings.news_api_url,
@@ -48,6 +59,7 @@ class NewsAPICollector:
         return source
 
     def _fetch_source_articles(self, source: NewsSource) -> List[RawArticle]:
+        """Baixa a resposta da API e converte cada item em `RawArticle`."""
         response = requests.get(
             source.base_url or settings.news_api_url,
             params=self._build_params(),
@@ -68,6 +80,7 @@ class NewsAPICollector:
         return collected
 
     def _build_params(self) -> dict[str, Any]:
+        """Monta os parametros HTTP conforme o endpoint configurado."""
         params: dict[str, Any] = {"pageSize": settings.news_api_page_size}
         path = urlparse(settings.news_api_url).path
 
@@ -84,6 +97,7 @@ class NewsAPICollector:
         return params
 
     def _normalize_article(self, source_id: int, article: dict[str, Any]) -> Optional[RawArticle]:
+        """Transforma o payload da API em um artigo bruto filtrado."""
         original_url = normalize_url(article.get("url"))
         original_title = (article.get("title") or "").strip()
         original_description = sanitize_article_text(article.get("description"))
@@ -136,6 +150,7 @@ class NewsAPICollector:
         )
 
     def _parse_datetime(self, value: Optional[str]) -> Optional[datetime]:
+        """Converte timestamps ISO8601 usados pela API."""
         if not value:
             return None
 

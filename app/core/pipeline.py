@@ -1,3 +1,14 @@
+"""Orquestracao principal do pipeline de noticias.
+
+Este modulo coordena o fluxo inteiro:
+- coleta de fontes API, RSS e JSON Feed
+- deduplicacao do lote bruto
+- comparacao do bruto com `raw_articles`
+- selecao dos candidatos para geracao
+- chamada da IA
+- persistencia da materia final e de falhas de processamento
+"""
+
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -24,6 +35,8 @@ from sqlalchemy import func, select
 
 
 class NewsPipeline:
+    """Orquestra uma rodada completa de coleta, selecao e geracao."""
+
     def __init__(self) -> None:
         self.api_collector = NewsAPICollector()
         self.rss_collector = RSSCollector()
@@ -32,11 +45,13 @@ class NewsPipeline:
         self.prompt_path = Path("prompts/article.txt")
 
     def load_prompt(self) -> str:
+        """Carrega o prompt textual usado pela camada de IA."""
         if not self.prompt_path.exists():
             return ""
         return self.prompt_path.read_text(encoding="utf-8")
 
     def run(self) -> List[GeneratedArticle]:
+        """Executa uma rodada completa do pipeline."""
         prompt_template = self.load_prompt()
         target_limit = settings.pipeline_max_items_per_run
 
@@ -45,6 +60,8 @@ class NewsPipeline:
             collected_articles.extend(self.api_collector.collect(session))
             collected_articles.extend(self.rss_collector.collect(session))
             collected_articles.extend(self.json_feed_collector.collect(session))
+            # Primeiro removemos duplicidade dentro do lote coletado; so depois
+            # limitamos variedade por fonte e persistimos no banco.
             collected_articles = self._deduplicate_batch(collected_articles)
             collected_articles = self._limit_varied_articles_per_source(collected_articles)
             stored_articles = self._persist_raw_articles(session, collected_articles)
@@ -53,9 +70,16 @@ class NewsPipeline:
             return self._generate_articles_for_run(session, generation_candidates, prompt_template, target_limit)
 
     def _persist_raw_article(self, session, article: RawArticle) -> RawArticle:
+        """Atalho de teste/uso interno para persistir um unico bruto."""
         return self._persist_raw_articles(session, [article])[0]
 
     def _persist_raw_articles(self, session, articles: List[RawArticle]) -> List[RawArticle]:
+        """Salva artigos brutos comparando apenas contra `raw_articles`.
+
+        Regras principais:
+        - URL continua sendo comparada globalmente
+        - titulo normalizado e `content_hash` usam a janela de lookback
+        """
         if not articles:
             return []
 
@@ -110,12 +134,14 @@ class NewsPipeline:
         return persisted_articles
 
     def _already_generated(self, session, raw_article_id: int) -> bool:
+        """Verifica se uma `raw_article` ja foi usada em geracao anterior."""
         existing = session.scalar(
             select(GeneratedArticleSource).where(GeneratedArticleSource.raw_article_id == raw_article_id)
         )
         return existing is not None
 
     def _get_or_create_category(self, session, name: str) -> Category:
+        """Resolve ou cria a categoria editorial de uma materia gerada."""
         normalized_name = self._normalize_category_name(name)
         slug = slugify(normalized_name)
         category = session.scalar(select(Category).where(Category.slug == slug))
@@ -128,6 +154,7 @@ class NewsPipeline:
         return category
 
     def _get_or_create_tag_ids(self, session, tag_names: List[str]) -> List[int]:
+        """Resolve ou cria tags e devolve apenas seus ids."""
         tag_ids: List[int] = []
         seen_slugs: set[str] = set()
 
@@ -152,11 +179,13 @@ class NewsPipeline:
         return tag_ids
 
     def _normalize_category_name(self, name: str) -> str:
+        """Normaliza categoria gerada e limita ao conjunto permitido."""
         normalized_name = normalize_label(name or "Geral") or "Geral"
         allowed_by_slug = {slugify(category): category for category in settings.allowed_categories}
         return allowed_by_slug.get(slugify(normalized_name), "Geral")
 
     def _deduplicate_batch(self, articles: List[RawArticle]) -> List[RawArticle]:
+        """Remove duplicidade obvia dentro do lote ainda em memoria."""
         unique_articles: List[RawArticle] = []
         seen_urls: set[str] = set()
         seen_titles: set[str] = set()
@@ -186,6 +215,7 @@ class NewsPipeline:
         return unique_articles
 
     def _limit_varied_articles_per_source(self, articles: List[RawArticle]) -> List[RawArticle]:
+        """Mantem apenas uma quantidade limitada de itens variados por fonte."""
         max_per_source = settings.max_raw_articles_per_source
         if max_per_source <= 0:
             return articles
@@ -221,6 +251,7 @@ class NewsPipeline:
         return selected_articles
 
     def _select_articles_for_run(self, session, articles: List[RawArticle], limit: int) -> List[RawArticle]:
+        """Seleciona candidatos equilibrando tipo de fonte e rotacao."""
         if limit <= 0:
             return articles
 
@@ -290,6 +321,7 @@ class NewsPipeline:
         by_source: dict[int, List[RawArticle]],
         source_order: List[int],
     ) -> RawArticle | None:
+        """Faz round-robin entre fontes de um mesmo tipo."""
         if not source_order:
             return None
 
@@ -310,6 +342,7 @@ class NewsPipeline:
         return None
 
     def _rotate_items(self, items: List[int] | List[str], rotation_seed: int) -> List[int] | List[str]:
+        """Rotaciona a ordem base para evitar sempre o mesmo primeiro item."""
         if not items:
             return []
 
@@ -317,6 +350,7 @@ class NewsPipeline:
         return list(items[rotation:] + items[:rotation])
 
     def _get_candidate_limit(self, total_articles: int, target_limit: int) -> int:
+        """Calcula o tamanho do pool antes da geracao final."""
         if total_articles <= 0:
             return 0
         if target_limit <= 0:
@@ -332,6 +366,7 @@ class NewsPipeline:
         stored_articles: List[RawArticle],
         target_limit: int,
     ) -> List[RawArticle]:
+        """Aplica os filtros finais antes de chamar a IA."""
         candidates = self._exclude_already_generated_articles(session, stored_articles)
         candidate_limit = self._get_candidate_limit(len(candidates), target_limit)
         if candidate_limit > 0:
@@ -340,6 +375,7 @@ class NewsPipeline:
         return self._prioritize_articles_for_generation(session, candidates)
 
     def _exclude_already_generated_articles(self, session, articles: List[RawArticle]) -> List[RawArticle]:
+        """Remove brutos que ja viraram materia em execucoes anteriores."""
         if not articles:
             return []
 
@@ -356,6 +392,7 @@ class NewsPipeline:
         return [article for article in articles if article is not None and article.id not in generated_ids]
 
     def _exclude_similar_articles_in_batch(self, articles: List[RawArticle]) -> List[RawArticle]:
+        """Evita quase-duplicatas dentro do lote atual de geracao."""
         if not articles:
             return []
 
@@ -379,6 +416,7 @@ class NewsPipeline:
         return filtered_articles
 
     def _prioritize_articles_for_generation(self, session, articles: List[RawArticle]) -> List[RawArticle]:
+        """Intercala categorias previstas para aumentar variedade editorial."""
         if len(articles) <= 1:
             return articles
 
@@ -423,6 +461,7 @@ class NewsPipeline:
         prompt_template: str,
         target_limit: int,
     ) -> List[GeneratedArticle]:
+        """Gera materias finais e registra falhas sem abortar a rodada inteira."""
         generated_articles: List[GeneratedArticle] = []
         deferred_articles: List[tuple[RawArticle, GeneratedArticlePayload]] = []
         category_counts: Counter[str] = Counter()
@@ -486,6 +525,7 @@ class NewsPipeline:
         return generated_articles
 
     def _should_defer_article_for_category(self, category_name: str, category_counts: Counter[str]) -> bool:
+        """Adia artigos quando a categoria ja dominou demais o lote."""
         current_count = category_counts[category_name]
         if current_count >= settings.max_articles_per_category_per_run:
             return True
@@ -505,6 +545,7 @@ class NewsPipeline:
         raw_article: RawArticle,
         payload: GeneratedArticlePayload,
     ) -> GeneratedArticle:
+        """Persiste a materia final e cria o vinculo com a noticia bruta."""
         category = self._get_or_create_category(session, payload.category)
         tag_ids = self._get_or_create_tag_ids(session, payload.tags)
 
@@ -534,6 +575,7 @@ class NewsPipeline:
         return generated_article
 
     def _log_processing_failure(self, session, raw_article: RawArticle, stage: str, exc: Exception) -> None:
+        """Registra erro processual no banco sem explodir a execucao toda."""
         try:
             failure = ProcessingFailure(
                 source_id=raw_article.source_id,

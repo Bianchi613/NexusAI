@@ -1,3 +1,13 @@
+"""Modelos ORM do NexusAI.
+
+Este arquivo descreve a estrutura principal do banco e as relacoes entre:
+- fontes
+- noticias brutas
+- materias geradas
+- categorias, tags e usuarios
+- falhas de processamento
+"""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -9,10 +19,12 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
+    """Base declarativa compartilhada por todos os modelos."""
     pass
 
 
 class User(Base):
+    """Usuarios do sistema, incluindo clientes e revisores."""
     __tablename__ = "users"
     __table_args__ = (
         CheckConstraint("role IN ('cliente', 'revisor')", name="ck_users_role"),
@@ -36,6 +48,7 @@ class User(Base):
 
 
 class NewsSource(Base):
+    """Fonte cadastrada de coleta: API, RSS ou JSON Feed."""
     __tablename__ = "news_sources"
     __table_args__ = (
         CheckConstraint("source_type IN ('api', 'rss', 'json_feed')", name="ck_news_sources_type"),
@@ -53,6 +66,7 @@ class NewsSource(Base):
 
 
 class Category(Base):
+    """Categoria editorial da materia final."""
     __tablename__ = "categories"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -63,6 +77,7 @@ class Category(Base):
 
 
 class Tag(Base):
+    """Tag editorial usada nas materias geradas."""
     __tablename__ = "tags"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -71,6 +86,7 @@ class Tag(Base):
 
 
 class RawArticle(Base):
+    """Noticia coletada da fonte original antes da geracao com IA."""
     __tablename__ = "raw_articles"
     __table_args__ = (
         UniqueConstraint("original_url", name="uq_raw_articles_original_url"),
@@ -97,6 +113,7 @@ class RawArticle(Base):
 
 
 class GeneratedArticle(Base):
+    """Materia final consolidada e gerada pelo pipeline."""
     __tablename__ = "generated_articles"
     __table_args__ = (
         CheckConstraint(
@@ -127,10 +144,12 @@ class GeneratedArticle(Base):
 
     @property
     def source_ids(self) -> List[int]:
+        """Retorna ids de `raw_articles` vinculadas a esta materia."""
         return [link.raw_article_id for link in self.raw_article_links]
 
 
 class GeneratedArticleSource(Base):
+    """Tabela de ligacao entre materia final e noticia(s) bruta(s) usadas."""
     __tablename__ = "generated_article_sources"
     __table_args__ = (
         UniqueConstraint(
@@ -149,6 +168,7 @@ class GeneratedArticleSource(Base):
 
 
 class ProcessingFailure(Base):
+    """Registro persistente de erros ocorridos em alguma etapa do fluxo."""
     __tablename__ = "processing_failures"
 
     id: Mapped[int] = mapped_column(primary_key=True)
