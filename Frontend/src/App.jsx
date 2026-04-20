@@ -8,8 +8,21 @@ import { latestStories, watchStories } from './data/portalData'
 import HomePage from './pages/home/index.jsx'
 import LoginPage from './pages/login/index.jsx'
 import RegisterPage from './pages/register/index.jsx'
+import CulturaPage from './pages/cultura/index.jsx'
 
-const pageIds = new Set(['home', 'register', 'login'])
+const pageIds = new Set([
+  'home',
+  'register',
+  'login',
+  'noticias',
+  'negocios',
+  'tecnologia',
+  'saude',
+  'cultura',
+  'politica',
+  'laboratorio-ia',
+  'videos',
+])
 
 function getPageFromHash() {
   if (typeof window === 'undefined') {
@@ -26,9 +39,18 @@ function getCarouselSlice(items, start, count) {
   })
 }
 
+function PlaceholderPage({ title }) {
+  return (
+    <section>
+      <p>EDITORIA</p>
+      <h1>{title}</h1>
+      <p>Pagina em construcao.</p>
+    </section>
+  )
+}
+
 function App() {
   const [activePage, setActivePage] = useState(() => getPageFromHash())
-  const [activeSection, setActiveSection] = useState('Inicio')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [carouselStart, setCarouselStart] = useState(0)
 
@@ -38,6 +60,7 @@ function App() {
     }
 
     window.addEventListener('hashchange', handleHashChange)
+
     return () => {
       window.removeEventListener('hashchange', handleHashChange)
     }
@@ -56,12 +79,6 @@ function App() {
     window.location.hash = page
   }
 
-  const openSection = (section) => {
-    setIsSidebarOpen(false)
-    setActiveSection(section)
-    changePage('home')
-  }
-
   const showPreviousWatch = () => {
     setCarouselStart((current) => {
       return (current - 1 + watchStories.length) % watchStories.length
@@ -77,53 +94,62 @@ function App() {
   return (
     <div className="app-shell">
       <Sidebar
-        activeSection={activeSection}
+        activePage={activePage}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onChangePage={changePage}
-        onSelectSection={openSection}
       />
 
       <Header
         activePage={activePage}
-        activeSection={activeSection}
         onChangePage={changePage}
         onOpenMenu={() => setIsSidebarOpen(true)}
-        onSelectSection={openSection}
       />
 
       <main className="page-shell">
         {activePage === 'home' ? (
-          <HomePage activeSection={activeSection} onChangePage={changePage} />
+          <>
+            <HomePage activeSection="Início" onChangePage={changePage} />
+
+            <section className="news-grid-section">
+              <div className="section-bar">
+                <h2>Ultimas do Nexus IA</h2>
+                <p>Blocos prontos para noticias reais, reviews e coberturas ao vivo.</p>
+              </div>
+
+              <div className="news-grid">
+                {latestStories.map((story) => (
+                  <article className="news-card" key={story.headline}>
+                    <p className="story-kicker">{story.category}</p>
+                    <h3>{story.headline}</h3>
+                    <p>{story.excerpt}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <WatchStrip
+              stories={visibleWatchStories}
+              onNext={showNextWatch}
+              onPrevious={showPreviousWatch}
+            />
+          </>
         ) : null}
+
         {activePage === 'register' ? <RegisterPage onChangePage={changePage} /> : null}
         {activePage === 'login' ? <LoginPage onChangePage={changePage} /> : null}
+        {activePage === 'cultura' ? <CulturaPage /> : null}
 
-        <section className="news-grid-section">
-          <div className="section-bar">
-            <h2>Ultimas do Nexus IA</h2>
-            <p>Blocos prontos para noticias reais, reviews e coberturas ao vivo.</p>
-          </div>
-
-          <div className="news-grid">
-            {latestStories.map((story) => (
-              <article className="news-card" key={story.headline}>
-                <p className="story-kicker">{story.category}</p>
-                <h3>{story.headline}</h3>
-                <p>{story.excerpt}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <WatchStrip
-          stories={visibleWatchStories}
-          onNext={showNextWatch}
-          onPrevious={showPreviousWatch}
-        />
+        {activePage === 'noticias' ? <PlaceholderPage title="Notícias" /> : null}
+        {activePage === 'negocios' ? <PlaceholderPage title="Negócios" /> : null}
+        {activePage === 'tecnologia' ? <PlaceholderPage title="Tecnologia" /> : null}
+        {activePage === 'saude' ? <PlaceholderPage title="Saúde" /> : null}
+        {activePage === 'politica' ? <PlaceholderPage title="Política" /> : null}
+        {activePage === 'laboratorio-ia' ? <PlaceholderPage title="Laboratório IA" /> : null}
+        {activePage === 'videos' ? <PlaceholderPage title="Vídeos" /> : null}
       </main>
 
-      <Footer />
+      <Footer onChangePage={changePage} />
     </div>
   )
 }

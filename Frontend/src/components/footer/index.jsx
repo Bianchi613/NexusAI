@@ -73,7 +73,23 @@ const socialLinks = [
   },
 ]
 
-function Footer() {
+function mapSectionToPage(section) {
+  const normalized = section.trim().toLowerCase()
+
+  if (normalized === 'início' || normalized === 'inicio') return 'home'
+  if (normalized === 'notícias' || normalized === 'noticias') return 'noticias'
+  if (normalized === 'negócios' || normalized === 'negocios') return 'negocios'
+  if (normalized === 'tecnologia') return 'tecnologia'
+  if (normalized === 'saúde' || normalized === 'saude') return 'saude'
+  if (normalized === 'cultura') return 'cultura'
+  if (normalized === 'política' || normalized === 'politica') return 'politica'
+  if (normalized === 'laboratório ia' || normalized === 'laboratorio ia') return 'laboratorio-ia'
+  if (normalized === 'vídeos' || normalized === 'videos') return 'videos'
+
+  return 'home'
+}
+
+function Footer({ onChangePage }) {
   return (
     <footer className="site-footer">
       <div className="footer-brand">
@@ -82,7 +98,14 @@ function Footer() {
 
       <nav className="footer-nav" aria-label="Mapa do portal">
         {footerSections.map((section) => (
-          <a href="/" key={section} onClick={(event) => event.preventDefault()}>
+          <a
+            href="/"
+            key={section}
+            onClick={(event) => {
+              event.preventDefault()
+              onChangePage(mapSectionToPage(section))
+            }}
+          >
             {section}
           </a>
         ))}
