@@ -25,11 +25,11 @@ Nesta branch, o projeto possui:
 
 Status do backend do portal nesta etapa:
 
-- rotas publicas basicas ja expostas
+- CRUD de `users`, `articles`, `categories` e `tags` ja exposto
 - modulos `auth`, `users`, `articles`, `categories`, `tags` e `review` ja separados
 - integracao com `app.db` e `app.models` reaproveitada
 - autenticacao real ainda nao implementada
-- CRUDs completos ainda nao implementados
+- fluxo editorial de revisao ainda em evolucao
 
 ## Inicio Rapido
 
@@ -232,15 +232,12 @@ Resumo curto:
 - testes automatizados da parte principal do fluxo
 - backend HTTP inicial do portal com FastAPI
 - Swagger do backend do portal
-- rotas de leitura para `users`, `articles`, `categories` e `tags`
+- CRUD de `users`, `articles`, `categories` e `tags`
 - rotas editoriais iniciais em `review` para listar pendentes, aprovar e rejeitar
 
 ## O Que Ainda Esta Em Aberto
 
 - autenticacao real em `auth`
-- CRUD completo de `users`
-- CRUD completo de `categories`
-- CRUD completo de `tags`
 - fluxo editorial mais completo antes da publicacao
 - politicas de permissao por `role`
 
@@ -550,10 +547,24 @@ Rotas expostas hoje pelo backend do portal:
 - `POST /api/v1/auth/login`
 - `GET /api/v1/users`
 - `GET /api/v1/users/{user_id}`
+- `POST /api/v1/users`
+- `PUT /api/v1/users/{user_id}`
+- `DELETE /api/v1/users/{user_id}`
 - `GET /api/v1/articles`
 - `GET /api/v1/articles/{article_id}`
+- `POST /api/v1/articles`
+- `PUT /api/v1/articles/{article_id}`
+- `DELETE /api/v1/articles/{article_id}`
 - `GET /api/v1/categories`
+- `GET /api/v1/categories/{category_id}`
+- `POST /api/v1/categories`
+- `PUT /api/v1/categories/{category_id}`
+- `DELETE /api/v1/categories/{category_id}`
 - `GET /api/v1/tags`
+- `GET /api/v1/tags/{tag_id}`
+- `POST /api/v1/tags`
+- `PUT /api/v1/tags/{tag_id}`
+- `DELETE /api/v1/tags/{tag_id}`
 - `GET /api/v1/review/articles/pending`
 - `PATCH /api/v1/review/articles/{article_id}/approve`
 - `PATCH /api/v1/review/articles/{article_id}/reject`
@@ -617,6 +628,6 @@ ORDER BY id DESC;
 
 1. melhorar a qualidade editorial do texto gerado
 2. implementar autenticacao real no backend do portal
-3. concluir CRUDs de `users`, `categories` e `tags`
+3. reforcar permissoes por `role` nos CRUDs e no fluxo editorial
 4. ampliar a cobertura de testes
 5. preparar painel ou frontend
