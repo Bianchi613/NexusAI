@@ -1,0 +1,125 @@
+.watch-strip {
+  display: grid;
+  gap: 18px;
+  padding: 28px;
+  background: #1b1b1b;
+  color: #ffffff;
+}
+
+.watch-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.watch-head h2 {
+  padding-top: 12px;
+  color: #ffffff;
+  font-family: var(--sans);
+  text-transform: uppercase;
+  font-size: 1.45rem;
+}
+
+.watch-controls {
+  display: flex;
+  gap: 12px;
+}
+
+.watch-controls button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.watch-track {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.watch-card {
+  display: grid;
+  gap: 12px;
+}
+
+.watch-card h3,
+.watch-card p {
+  color: #ffffff;
+}
+
+.watch-thumb {
+  position: relative;
+  min-height: 170px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+    linear-gradient(135deg, #4a4a4a, #222222);
+  overflow: hidden;
+}
+
+.watch-thumb::after {
+  content: '';
+  position: absolute;
+  inset: auto 14px 14px auto;
+  width: 84px;
+  height: 84px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.watch-thumb::before {
+  content: '';
+  position: absolute;
+  inset: auto auto 18px 18px;
+  width: 96px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.watch-tag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.65);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.watch-stamp {
+  position: absolute;
+  left: 18px;
+  bottom: 28px;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+@media (max-width: 1120px) {
+  .watch-track {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .watch-strip {
+    padding: 20px;
+  }
+
+  .watch-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .watch-track {
+    grid-template-columns: 1fr;
+  }
+}

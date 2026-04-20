@@ -1,0 +1,33 @@
+.brand-wordmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-wordmark__image {
+  display: block;
+  width: min(100%, 280px);
+  height: 58px;
+  object-fit: contain;
+}
+
+.brand-wordmark--footer {
+  justify-content: flex-start;
+}
+
+.brand-wordmark--footer .brand-wordmark__image {
+  width: min(100%, 260px);
+  height: 58px;
+}
+
+@media (max-width: 720px) {
+  .brand-wordmark__image {
+    width: min(100%, 220px);
+    height: 46px;
+  }
+
+  .brand-wordmark--footer .brand-wordmark__image {
+    width: min(100%, 210px);
+    height: 46px;
+  }
+}

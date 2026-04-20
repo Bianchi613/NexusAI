@@ -1,0 +1,86 @@
+.account-page {
+  display: grid;
+  gap: 32px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.page-lead {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 3px solid var(--ink);
+}
+
+.page-lead p:last-child {
+  max-width: 62ch;
+  font-size: 1.08rem;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(280px, 0.7fr);
+  gap: 28px;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.account-card,
+.benefit-panel,
+.plan-card {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+}
+
+.account-card label,
+.account-card input {
+  display: block;
+}
+
+.account-card label {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.account-card input {
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid #bdbdbd;
+  font: inherit;
+}
+
+.benefit-panel ul,
+.plan-card ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.plan-card.is-featured {
+  border-top: 4px solid var(--ink);
+}
+
+@media (max-width: 1120px) {
+  .account-grid,
+  .plan-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .account-grid,
+  .plan-grid {
+    grid-template-columns: 1fr;
+  }
+}

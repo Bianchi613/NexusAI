@@ -1,120 +1,130 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect, useState } from 'react'
+import './styles/app-shell.css'
+import Footer from './components/footer/index.jsx'
+import Header from './components/header/index.jsx'
+import Sidebar from './components/sidebar/index.jsx'
+import WatchStrip from './components/watch-strip/index.jsx'
+import { latestStories, watchStories } from './data/portalData'
+import HomePage from './pages/home/index.jsx'
+import LoginPage from './pages/login/index.jsx'
+import RegisterPage from './pages/register/index.jsx'
+
+const pageIds = new Set(['home', 'register', 'login'])
+
+function getPageFromHash() {
+  if (typeof window === 'undefined') {
+    return 'home'
+  }
+
+  const hash = window.location.hash.replace('#', '').trim().toLowerCase()
+  return pageIds.has(hash) ? hash : 'home'
+}
+
+function getCarouselSlice(items, start, count) {
+  return Array.from({ length: count }, (_, index) => {
+    return items[(start + index) % items.length]
+  })
+}
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [activePage, setActivePage] = useState(() => getPageFromHash())
+  const [activeSection, setActiveSection] = useState('Inicio')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [carouselStart, setCarouselStart] = useState(0)
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setActivePage(getPageFromHash())
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange)
+    }
+  }, [])
+
+  const visibleWatchStories = getCarouselSlice(watchStories, carouselStart, 4)
+
+  const changePage = (page) => {
+    setIsSidebarOpen(false)
+
+    if (typeof window === 'undefined') {
+      setActivePage(page)
+      return
+    }
+
+    window.location.hash = page
+  }
+
+  const openSection = (section) => {
+    setIsSidebarOpen(false)
+    setActiveSection(section)
+    changePage('home')
+  }
+
+  const showPreviousWatch = () => {
+    setCarouselStart((current) => {
+      return (current - 1 + watchStories.length) % watchStories.length
+    })
+  }
+
+  const showNextWatch = () => {
+    setCarouselStart((current) => {
+      return (current + 1) % watchStories.length
+    })
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app-shell">
+      <Sidebar
+        activeSection={activeSection}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        onChangePage={changePage}
+        onSelectSection={openSection}
+      />
 
-      <div className="ticks"></div>
+      <Header
+        activePage={activePage}
+        activeSection={activeSection}
+        onChangePage={changePage}
+        onOpenMenu={() => setIsSidebarOpen(true)}
+        onSelectSection={openSection}
+      />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <main className="page-shell">
+        {activePage === 'home' ? (
+          <HomePage activeSection={activeSection} onChangePage={changePage} />
+        ) : null}
+        {activePage === 'register' ? <RegisterPage onChangePage={changePage} /> : null}
+        {activePage === 'login' ? <LoginPage onChangePage={changePage} /> : null}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        <section className="news-grid-section">
+          <div className="section-bar">
+            <h2>Ultimas do Nexus IA</h2>
+            <p>Blocos prontos para noticias reais, reviews e coberturas ao vivo.</p>
+          </div>
+
+          <div className="news-grid">
+            {latestStories.map((story) => (
+              <article className="news-card" key={story.headline}>
+                <p className="story-kicker">{story.category}</p>
+                <h3>{story.headline}</h3>
+                <p>{story.excerpt}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <WatchStrip
+          stories={visibleWatchStories}
+          onNext={showNextWatch}
+          onPrevious={showPreviousWatch}
+        />
+      </main>
+
+      <Footer />
+    </div>
   )
 }
 

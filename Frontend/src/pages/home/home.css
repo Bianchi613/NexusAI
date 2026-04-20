@@ -1,0 +1,141 @@
+.home-page {
+  display: grid;
+  gap: 32px;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.75fr);
+  gap: 28px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.hero-main,
+.hero-rail,
+.secondary-story {
+  min-width: 0;
+}
+
+.hero-main {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.hero-summary {
+  max-width: 62ch;
+  font-size: 1.08rem;
+}
+
+.hero-actions,
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.hero-meta {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.hero-rail {
+  display: grid;
+  gap: 18px;
+}
+
+.hero-visual {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  background: var(--soft);
+  border-top: 4px solid var(--ink);
+}
+
+.hero-visual-mark {
+  width: 96px;
+  height: 96px;
+}
+
+.hero-visual-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.hero-visual-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.rail-panel {
+  border-top: 4px solid var(--ink);
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.rail-panel-head {
+  padding: 16px 18px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rail-panel-head h3 {
+  font-family: var(--sans);
+}
+
+.most-read-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: item;
+}
+
+.most-read-list li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.most-read-list li::before {
+  counter-increment: item;
+  content: counter(item);
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.secondary-story {
+  display: grid;
+  gap: 12px;
+  padding-top: 4px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+@media (max-width: 1120px) {
+  .hero-grid,
+  .secondary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .secondary-grid {
+    grid-template-columns: 1fr;
+  }
+}
