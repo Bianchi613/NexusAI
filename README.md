@@ -1,6 +1,10 @@
 # NexusAI
 
-Backend de pipeline para portal de noticias com IA.
+Projeto em Python para um portal de noticias com IA, dividido em duas frentes
+na mesma base:
+
+- pipeline editorial que coleta, deduplica e gera materias
+- backend HTTP do portal, organizado em `backend/`
 
 O projeto faz isto:
 
@@ -11,6 +15,21 @@ O projeto faz isto:
 5. salva o resultado em `generated_articles`
 
 ![Fluxo basico do NexusAI](docs/EstruturaBasica.png)
+
+## Estado Atual
+
+Nesta branch, o projeto possui:
+
+- pipeline principal em `app/`, funcional e testado
+- backend do portal em `backend/`, com Swagger e estrutura modular
+
+Status do backend do portal nesta etapa:
+
+- rotas publicas basicas ja expostas
+- modulos `auth`, `users`, `articles`, `categories`, `tags` e `review` ja separados
+- integracao com `app.db` e `app.models` reaproveitada
+- autenticacao real ainda nao implementada
+- CRUDs completos ainda nao implementados
 
 ## Inicio Rapido
 
@@ -29,6 +48,11 @@ Linux/macOS:
 ```bash
 python -m pip install -r requirements.txt
 ```
+
+Importante:
+
+- `fastapi[standard]` agora faz parte das dependencias
+- isso habilita a CLI `fastapi`, usada para subir a API do portal de forma mais simples
 
 ### 2. Instale o Ollama e deixe o servidor ativo
 
@@ -150,7 +174,26 @@ Linux/macOS:
 python -m app.main
 ```
 
-### 6. Rode os testes
+### 6. Rode o backend do portal
+
+Windows PowerShell:
+
+```powershell
+fastapi dev
+```
+
+Linux/macOS:
+
+```bash
+fastapi dev
+```
+
+Swagger:
+
+- `http://127.0.0.1:8000/docs`
+- `http://127.0.0.1:8000/redoc`
+
+### 7. Rode os testes
 
 Windows PowerShell:
 
@@ -170,6 +213,7 @@ Resumo curto:
 - `ollama run llama3` carrega o modelo
 - `alembic upgrade head` prepara o banco
 - `python -m app.main` roda uma execucao do pipeline
+- `fastapi dev` sobe a API do portal em modo de desenvolvimento
 
 ## O Que Ja Funciona
 
@@ -186,6 +230,19 @@ Resumo curto:
 - salvamento de categoria, tags, imagens e videos
 - registro de falhas em `processing_failures`
 - testes automatizados da parte principal do fluxo
+- backend HTTP inicial do portal com FastAPI
+- Swagger do backend do portal
+- rotas de leitura para `users`, `articles`, `categories` e `tags`
+- rotas editoriais iniciais em `review` para listar pendentes, aprovar e rejeitar
+
+## O Que Ainda Esta Em Aberto
+
+- autenticacao real em `auth`
+- CRUD completo de `users`
+- CRUD completo de `categories`
+- CRUD completo de `tags`
+- fluxo editorial mais completo antes da publicacao
+- politicas de permissao por `role`
 
 ## Como O Fluxo Funciona
 
@@ -230,6 +287,15 @@ app/
   core/
     article_filters.py
     pipeline.py
+backend/
+  main.py
+  auth/
+  users/
+  articles/
+  categories/
+  tags/
+  review/
+  config/
 migrations/
   env.py
   versions/
@@ -262,6 +328,28 @@ tests/
   Configura engine e sessoes do SQLAlchemy.
 - `app/models.py`
   Define as tabelas e relacoes ORM.
+
+### Backend Do Portal
+
+- `backend/main.py`
+  Entrada principal da API HTTP do portal.
+- `backend/auth/`
+  Estrutura de autenticacao. Nesta etapa ainda em scaffold.
+- `backend/users/`
+  Rotas e servicos de usuarios.
+- `backend/articles/`
+  Rotas e servicos de leitura publica de materias.
+- `backend/categories/`
+  Rotas e servicos de categorias editoriais.
+- `backend/tags/`
+  Rotas e servicos de tags editoriais.
+- `backend/review/`
+  Rotas e servicos do fluxo inicial de revisao.
+- `backend/config/`
+  Configuracao compartilhada do backend.
+- os arquivos de acesso a banco ficam dentro dos modulos de dominio
+  como `article_repository.py`, `user_repository.py`,
+  `category_repository.py` e `tag_repository.py`.
 
 ### Coletores
 
@@ -400,6 +488,42 @@ Importante:
 - o banco deve estar alinhado via Alembic
 - em banco novo, rode antes `alembic upgrade head`
 
+Para rodar a API do portal:
+
+Windows PowerShell:
+
+```powershell
+fastapi dev
+```
+
+Linux/macOS:
+
+```bash
+fastapi dev
+```
+
+Importante:
+
+- a API do portal usa o mesmo banco do projeto
+- nesta etapa ela compartilha `app.db` e `app.models`
+- o Swagger fica disponivel em `/docs`
+- o `entrypoint` da CLI FastAPI esta configurado em `pyproject.toml`
+- execute o comando a partir da raiz do projeto
+
+Para uma execucao sem auto-reload:
+
+Windows PowerShell:
+
+```powershell
+fastapi run
+```
+
+Linux/macOS:
+
+```bash
+fastapi run
+```
+
 ## Testes
 
 Para rodar todos os testes:
@@ -418,7 +542,21 @@ python -m pytest
 
 Status atual:
 
-- `15` testes passando
+- `21` testes passando
+
+Rotas expostas hoje pelo backend do portal:
+
+- `GET /api/v1/auth/status`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/users`
+- `GET /api/v1/users/{user_id}`
+- `GET /api/v1/articles`
+- `GET /api/v1/articles/{article_id}`
+- `GET /api/v1/categories`
+- `GET /api/v1/tags`
+- `GET /api/v1/review/articles/pending`
+- `PATCH /api/v1/review/articles/{article_id}/approve`
+- `PATCH /api/v1/review/articles/{article_id}/reject`
 
 ## Consultas Uteis
 
@@ -478,7 +616,7 @@ ORDER BY id DESC;
 ## Proximos Passos
 
 1. melhorar a qualidade editorial do texto gerado
-2. criar API de consulta e revisao
-3. ampliar a cobertura de testes
-4. preparar painel ou frontend
-5. evoluir publicacao e fluxo de revisao
+2. implementar autenticacao real no backend do portal
+3. concluir CRUDs de `users`, `categories` e `tags`
+4. ampliar a cobertura de testes
+5. preparar painel ou frontend
