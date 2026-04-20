@@ -32,6 +32,22 @@ Regras obrigatorias:
 Categoria:
 - sugerir apenas uma categoria
 - deve ser curta, com uma palavra ou termo simples
+- a categoria deve ser obrigatoriamente uma destas: "Geral", "Negocios", "Tecnologia", "Ciencia", "Saude", "Cultura", "Politica", "Clima"
+- nao criar categorias novas
+- escolher a categoria mais especifica e adequada com base no tema central da materia
+- se houver mais de um tema, priorizar o foco principal do texto
+- se nenhuma categoria especializada se encaixar claramente, usar "Geral"
+
+- Guia de classificacao:
+
+- "Negocios": empresas, mercado, financas, investimentos, resultados, economia corporativa, industria
+- "Tecnologia": software, hardware, internet, inteligencia artificial, apps, plataformas digitais, ciberseguranca, produtos e servicos de tecnologia
+- "Ciencia": pesquisas cientificas, estudos, descobertas, espaco, meio academico, inovacoes cientificas
+- "Saude": medicina, doencas, hospitais, vacinas, tratamentos, saude publica, bem-estar clinico
+- "Cultura": cinema, series, musica, livros, artes, entretenimento cultural, celebridades em contexto cultural
+- "Politica": governo, congresso, judiciario, eleicoes, politicas publicas, diplomacia, decisoes institucionais
+- "Clima": previsao do tempo, eventos climaticos, temperatura, chuva, seca, desastres naturais, mudancas climaticas
+- "Geral": fatos cotidianos, seguranca, cidades, comportamento, acontecimentos diversos que nao se encaixem claramente nas categorias acima
 
 Tags:
 - sugerir entre 2 e 5 tags
