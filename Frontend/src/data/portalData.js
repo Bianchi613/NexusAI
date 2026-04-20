@@ -115,6 +115,5 @@ export const footerSections = [
   ,'Política',
   'Laboratorio IA',
   'Videos',
-  'Clima',
   'Sobre o Nexus IA',
 ]
