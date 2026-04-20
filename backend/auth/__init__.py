@@ -23,6 +23,5 @@ def protected_route(authorization: str = Header(None)):
 Fluxo de autenticacao:
 1. POST /auth/register - Cria novo usuario
 2. POST /auth/login - Retorna JWT token
-3. GET /protected + Authorization: Bearer {token} - Acessa rota protegida
+3. GET /auth/me + Authorization: Bearer {token} - Acessa rota protegida
 """
-

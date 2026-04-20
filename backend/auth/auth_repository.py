@@ -2,7 +2,7 @@
 
 from app.db import get_session
 from app.models import User
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 
 class AuthRepository:
@@ -10,8 +10,9 @@ class AuthRepository:
 
     def find_by_email(self, email: str) -> User | None:
         """Busca usuario pelo email para validar credenciais."""
+        normalized_email = email.strip().lower()
         with get_session() as session:
-            statement = select(User).where(User.email == email)
+            statement = select(User).where(func.lower(User.email) == normalized_email)
             return session.scalar(statement)
 
     def get_by_id(self, user_id: int) -> User | None:
@@ -44,9 +45,10 @@ class AuthRepository:
 
     def get_active_user(self, email: str) -> User | None:
         """Busca apenas usuarios ativos para login."""
+        normalized_email = email.strip().lower()
         with get_session() as session:
             statement = select(User).where(
-                (User.email == email) & (User.is_active == True)
+                (func.lower(User.email) == normalized_email) & User.is_active.is_(True)
             )
             return session.scalar(statement)
 

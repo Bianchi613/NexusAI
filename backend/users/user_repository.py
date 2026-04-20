@@ -2,7 +2,7 @@
 
 from app.db import get_session
 from app.models import GeneratedArticle, User
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 
 class UserRepository:
@@ -10,8 +10,9 @@ class UserRepository:
 
     def find_by_email(self, email: str) -> User | None:
         """Busca usuario pelo email."""
+        normalized_email = email.strip().lower()
         with get_session() as session:
-            statement = select(User).where(User.email == email)
+            statement = select(User).where(func.lower(User.email) == normalized_email)
             return session.scalar(statement)
 
     def get_by_id(self, user_id: int) -> User | None:

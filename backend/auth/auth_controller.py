@@ -1,6 +1,12 @@
 """Controller das rotas de autenticacao."""
 
-from backend.auth.auth_schema import AuthStatusResponse, LoginRequest, TokenResponse, RegisterRequest
+from backend.auth.auth_schema import (
+    AuthStatusResponse,
+    LoginRequest,
+    RegisterRequest,
+    RegisterResponse,
+    TokenResponse,
+)
 from backend.auth.auth_service import describe_auth_module, login, register
 
 
@@ -14,7 +20,7 @@ def login_user(payload: LoginRequest) -> TokenResponse:
     return login(payload)
 
 
-def register_user(payload: RegisterRequest) -> dict:
+def register_user(payload: RegisterRequest) -> RegisterResponse:
     """Encaminha o registro de novo usuario para a camada de servico."""
     return register(
         email=payload.email,

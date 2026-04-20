@@ -1,5 +1,6 @@
 """Constantes e helpers de seguranca."""
 
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -8,19 +9,20 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-
-AUTH_NOT_IMPLEMENTED_MESSAGE = (
-    "A arquitetura de auth ja foi separada, mas a implementacao real "
-    "de hash de senha, token e autorizacao ainda sera adicionada."
-)
+from backend.auth.auth_repository import AuthRepository
 
 # Configuracoes de JWT
-SECRET_KEY = "your-secret-key-change-in-production"  # TODO: Mover para variavel de ambiente
+DEFAULT_SECRET_KEY = "dev-only-change-me-please-set-jwt-secret-key"
+SECRET_KEY = os.getenv(
+    "JWT_SECRET_KEY",
+    DEFAULT_SECRET_KEY,
+)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 # Esquema de seguranca para o Swagger
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
+_auth_repository = AuthRepository()
 
 
 def hash_password(password: str) -> str:
@@ -104,5 +106,25 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             detail="Token invalido.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    return payload
+
+    try:
+        user = _auth_repository.get_by_id(int(user_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalido.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario do token nao encontrado ou inativo.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return {
+        "sub": str(user.id),
+        "email": user.email,
+        "role": user.role,
+    }
