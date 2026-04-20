@@ -5,9 +5,9 @@ export const topSections = [
   'Tecnologia',
   'Saude',
   'Cultura',
+  'Política',
   'Laboratorio IA',
   'Videos',
-  'Ao vivo',
 ]
 
 export const sectionSummaries = {
@@ -111,10 +111,10 @@ export const footerSections = [
   'Negocios',
   'Tecnologia',
   'Saude',
-  'Cultura',
+  'Cultura'
+  ,'Política',
   'Laboratorio IA',
   'Videos',
-  'Ao vivo',
   'Clima',
   'Sobre o Nexus IA',
 ]
