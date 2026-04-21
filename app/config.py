@@ -88,9 +88,9 @@ class Settings:
     database_echo: bool = _as_bool(os.getenv("DATABASE_ECHO"), default=False)
 
     # AI
-#   ollama_model: str = _require_env("OLLAMA_MODEL")
-#   ollama_base_url: str = _require_env("OLLAMA_BASE_URL")
-#   ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "180"))
+    # ollama_model: str = _require_env("OLLAMA_MODEL")
+    # ollama_base_url: str = _require_env("OLLAMA_BASE_URL")
+    # ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "180"))
 
     gemini_api_key: str = _require_env("GEMINI_API_KEY")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")

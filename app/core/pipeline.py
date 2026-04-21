@@ -16,7 +16,8 @@ from typing import List
 
 import requests
 
-from app.ai.ollama import GeneratedArticlePayload, OllamaClient
+#from app.ai.ollama import GeneratedArticlePayload, OllamaClient
+from app.ai.gemini import GeneratedArticlePayload, GeminiClient
 from app.collectors.json_feed import JSONFeedCollector
 from app.collectors.news_api import NewsAPICollector
 from app.collectors.rss import RSSCollector
@@ -42,7 +43,8 @@ class NewsPipeline:
         self.api_collector = NewsAPICollector()
         self.rss_collector = RSSCollector()
         self.json_feed_collector = JSONFeedCollector()
-        self.ai_client = OllamaClient()
+        #self.ai_client = OllamaClient()
+        self.ai_client = GeminiClient()
         self.prompt_path = Path("prompts/article.txt")
 
     def load_prompt(self) -> str:
@@ -527,7 +529,7 @@ class NewsPipeline:
                 category_counts[category_name] += 1
             except requests.RequestException as exc:
                 session.rollback()
-                self._log_processing_failure(session, raw_article, "ollama_generate", exc)
+                self._log_processing_failure(session, raw_article, "Gemini_generate", exc)
                 print(
                     "Falha ao gerar materia para "
                     f"'{raw_article.original_title}' ({raw_article.original_url}): "
@@ -597,7 +599,8 @@ class NewsPipeline:
             body=payload.body,
             category_id=category.id if category else None,
             status="nao_revisada",
-            ai_model=settings.ollama_model,
+            #ai_model=settings.ollama_model,
+            ai_model=settings.gemini_model,
             prompt_version=payload.prompt_version,
             tags=tag_ids,
             image_urls=list(raw_article.original_image_urls or []),
