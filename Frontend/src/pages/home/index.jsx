@@ -85,6 +85,12 @@ function HomePage({ activeSection, onChangePage, onOpenArticle }) {
     <section className="home-page">
       <div className="hero-grid">
         <article className="hero-main">
+          {heroArticle.imageUrl ? (
+            <div className="hero-main__media">
+              <img src={heroArticle.imageUrl} alt={heroArticle.title} />
+            </div>
+          ) : null}
+
           <div className="hero-label-row">
             <p className="story-kicker">{activeSection}</p>
             <span className="hero-live-pill">Edicao ao vivo</span>
@@ -175,6 +181,11 @@ function HomePage({ activeSection, onChangePage, onOpenArticle }) {
               type="button"
               onClick={() => onOpenArticle(story.slug)}
             >
+              {story.imageUrl ? (
+                <div className="news-card__media">
+                  <img src={story.imageUrl} alt={story.title} />
+                </div>
+              ) : null}
               <p className="story-kicker">{story.category}</p>
               <h3>{story.title}</h3>
               <p>{story.excerpt || story.summary}</p>
@@ -204,6 +215,14 @@ function HomePage({ activeSection, onChangePage, onOpenArticle }) {
             type="button"
             onClick={() => onChangePage(category.page)}
           >
+            {category.featuredArticle?.imageUrl ? (
+              <div className="secondary-story__media">
+                <img
+                  src={category.featuredArticle.imageUrl}
+                  alt={category.featuredArticle.title}
+                />
+              </div>
+            ) : null}
             <p className="story-kicker">{category.eyebrow}</p>
             <h2>{category.title}</h2>
             <p>{category.description}</p>

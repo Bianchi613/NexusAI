@@ -28,6 +28,9 @@ function WatchStrip({ onNext, onPrevious, onOpenArticle, stories }) {
             }}
           >
             <div className="watch-thumb">
+              {story.imageUrl ? (
+                <img className="watch-thumb__image" src={story.imageUrl} alt={story.title} />
+              ) : null}
               <span className="watch-tag">{story.tag}</span>
               <span className="watch-stamp">Nexus AI</span>
             </div>

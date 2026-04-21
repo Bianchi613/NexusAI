@@ -61,6 +61,24 @@
   border-top: 4px solid var(--ink);
 }
 
+.editorial-page__feature-media,
+.editorial-page__story-media {
+  overflow: hidden;
+  background: rgba(43, 37, 32, 0.06);
+}
+
+.editorial-page__feature-media {
+  min-height: 300px;
+}
+
+.editorial-page__feature-media img,
+.editorial-page__story-media img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 .editorial-page__feature-copy {
   display: grid;
   gap: 12px;
@@ -142,6 +160,10 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.editorial-page__story-media {
+  min-height: 180px;
 }
 
 .editorial-page__story-link {

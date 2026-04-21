@@ -74,6 +74,15 @@
   overflow: hidden;
 }
 
+.watch-thumb__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 .watch-thumb::after {
   content: '';
   position: absolute;

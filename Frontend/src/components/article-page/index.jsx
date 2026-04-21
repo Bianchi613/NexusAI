@@ -96,15 +96,23 @@ function ArticlePage({ articleSlug, onChangePage, onOpenArticle }) {
         </div>
       </header>
 
-      <div className="article-page__hero">
-        <div className="article-page__hero-mark">
-          <span>{article.label}</span>
-          <strong>{article.category}</strong>
+      <div className={`article-page__hero${article.imageUrl ? '' : ' article-page__hero--without-image'}`}>
+        {article.imageUrl ? (
+          <div className="article-page__hero-media">
+            <img src={article.imageUrl} alt={article.title} />
+          </div>
+        ) : null}
+
+        <div className="article-page__hero-copy">
+          <div className="article-page__hero-mark">
+            <span>{article.label}</span>
+            <strong>{article.category}</strong>
+          </div>
+          <p>
+            Materia dinamica renderizada com imagem, metadados, corpo, tags e relacoes
+            entre artigos publicados no banco.
+          </p>
         </div>
-        <p>
-          Template fixo de materia pronto para renderizar o conteudo vindo do banco
-          com metadados, corpo, tags e relacoes entre artigos.
-        </p>
       </div>
 
       <div className="article-page__grid">
@@ -134,6 +142,11 @@ function ArticlePage({ articleSlug, onChangePage, onOpenArticle }) {
                   type="button"
                   onClick={() => onOpenArticle(item.slug)}
                 >
+                  {item.imageUrl ? (
+                    <div className="article-page__related-media">
+                      <img src={item.imageUrl} alt={item.title} />
+                    </div>
+                  ) : null}
                   <span className="story-kicker">{item.label}</span>
                   <h3>{item.title}</h3>
                   <p>{item.excerpt}</p>

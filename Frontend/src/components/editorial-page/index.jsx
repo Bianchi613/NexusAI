@@ -111,6 +111,12 @@ function EditorialPage({ page, onChangePage, onOpenArticle }) {
 
       <div className="editorial-page__grid">
         <article className="editorial-page__feature">
+          {featuredArticle.imageUrl ? (
+            <div className="editorial-page__feature-media">
+              <img src={featuredArticle.imageUrl} alt={featuredArticle.title} />
+            </div>
+          ) : null}
+
           <div className="editorial-page__feature-copy">
             <p className="story-kicker">{featuredArticle.label}</p>
             <h2>{featuredArticle.title}</h2>
@@ -188,6 +194,11 @@ function EditorialPage({ page, onChangePage, onOpenArticle }) {
               type="button"
               onClick={() => onOpenArticle(article.slug)}
             >
+              {article.imageUrl ? (
+                <div className="editorial-page__story-media">
+                  <img src={article.imageUrl} alt={article.title} />
+                </div>
+              ) : null}
               <span className="story-kicker">{article.label}</span>
               <h3>{article.title}</h3>
               <p>{article.excerpt}</p>

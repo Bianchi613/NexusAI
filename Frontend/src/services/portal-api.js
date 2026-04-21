@@ -71,6 +71,11 @@ function mapCategoryDetail(payload) {
 
 function mapArticleDetail(payload) {
   const category = payload.category ?? null
+  const imageUrls = Array.isArray(payload.image_urls)
+    ? payload.image_urls.filter(Boolean)
+    : payload.image_url
+      ? [payload.image_url]
+      : []
 
   return {
     id: payload.id,
@@ -85,6 +90,8 @@ function mapArticleDetail(payload) {
     publishedAt: formatPublishedAt(payload.published_at),
     readTime: formatReadTime(payload.read_time_minutes),
     location: payload.location ?? 'Brasil',
+    imageUrl: imageUrls[0] ?? null,
+    imageUrls,
     body: payload.body_paragraphs ?? [],
     tags: (payload.tags ?? []).map((tag) => tag.name),
     relatedArticles: (payload.related_articles ?? []).map(mapArticleCard),
