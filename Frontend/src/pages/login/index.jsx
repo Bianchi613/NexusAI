@@ -40,6 +40,14 @@ function LoginPage({ onAuthChange, onChangePage }) {
     }
   }
 
+  const handleForgotPassword = () => {
+    if (typeof window !== 'undefined') {
+      window.location.hash = '#forgot-password'
+    }
+
+    onChangePage('forgot-password')
+  }
+
   return (
     <section className="account-page">
       <div className="page-lead">
@@ -82,7 +90,7 @@ function LoginPage({ onAuthChange, onChangePage }) {
           <button className="submit-button" type="submit">
             {status === 'loading' ? 'Entrando...' : 'Entrar'}
           </button>
-          <button className="ghost-button" type="button">
+          <button className="ghost-button" type="button" onClick={handleForgotPassword}>
             Esqueci minha senha
           </button>
         </form>

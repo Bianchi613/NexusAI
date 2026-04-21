@@ -27,6 +27,8 @@ const pageTitles = {
   review: 'Revisao',
   login: 'Entrar',
   register: 'Cadastro',
+  'forgot-password': 'Recuperar senha',
+  'reset-password': 'Nova senha',
   'terms-of-use': 'Termos de uso',
   'privacy-policy': 'Politica de privacidade',
   contato: 'Contato',

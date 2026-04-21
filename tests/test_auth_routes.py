@@ -137,3 +137,69 @@ def test_auth_rejects_token_for_missing_user(monkeypatch) -> None:
     assert response.json() == {
         "detail": "Usuario do token nao encontrado ou inativo."
     }
+
+
+def test_forgot_password_returns_token_in_dev_mode(monkeypatch) -> None:
+    """Sem provedor configurado, o token deve voltar na resposta para teste local."""
+    _configure_in_memory_auth_db(monkeypatch)
+    client = TestClient(app)
+
+    register_response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "recover@example.com",
+            "name": "Recover User",
+            "password": "Senha@123",
+        },
+    )
+
+    assert register_response.status_code == 201
+
+    monkeypatch.setattr(auth_service_module, "is_password_reset_email_configured", lambda: False)
+
+    response = client.post(
+        "/api/v1/auth/forgot-password",
+        json={"email": "recover@example.com"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["reset_token"]
+    assert response.json()["expires_in_minutes"] == 30
+
+
+def test_forgot_password_sends_email_when_provider_is_configured(monkeypatch) -> None:
+    """Com provedor configurado, a resposta nao deve expor o token."""
+    _configure_in_memory_auth_db(monkeypatch)
+    client = TestClient(app)
+
+    register_response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "mail@example.com",
+            "name": "Mail User",
+            "password": "Senha@123",
+        },
+    )
+
+    assert register_response.status_code == 201
+
+    sent_payload = {}
+
+    def fake_send_password_reset_email(*, recipient_email: str, token: str):
+        sent_payload["recipient_email"] = recipient_email
+        sent_payload["token"] = token
+        return {"delivered": True}
+
+    monkeypatch.setattr(auth_service_module, "is_password_reset_email_configured", lambda: True)
+    monkeypatch.setattr(auth_service_module, "send_password_reset_email", fake_send_password_reset_email)
+
+    response = client.post(
+        "/api/v1/auth/forgot-password",
+        json={"email": "mail@example.com"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["reset_token"] is None
+    assert "link de redefinicao" in response.json()["message"]
+    assert sent_payload["recipient_email"] == "mail@example.com"
+    assert isinstance(sent_payload["token"], str) and sent_payload["token"]

@@ -11,6 +11,7 @@ import ClimaPage from './pages/clima/index.jsx'
 import ContactPage from './pages/contact/index.jsx'
 import CulturaPage from './pages/cultura/index.jsx'
 import HomePage from './pages/home/index.jsx'
+import ForgotPasswordPage from './pages/forgot-password/index.jsx'
 import LoginPage from './pages/login/index.jsx'
 import NegociosPage from './pages/negocios/index.jsx'
 import NoticiasPage from './pages/noticias/index.jsx'
@@ -19,6 +20,7 @@ import PoliticaPage from './pages/politica/index.jsx'
 import PrivacyPolicyPage from './pages/privacy-policy/index.jsx'
 import RegisterPage from './pages/register/index.jsx'
 import ReviewPage from './pages/review/index.jsx'
+import ResetPasswordPage from './pages/reset-password/index.jsx'
 import SaudePage from './pages/saude/index.jsx'
 import TecnologiaPage from './pages/tecnologia/index.jsx'
 import TermsOfUsePage from './pages/terms-of-use/index.jsx'
@@ -28,6 +30,7 @@ const pageIds = new Set([
   'about',
   'contato',
   'home',
+  'forgot-password',
   'register',
   'login',
   'not-found',
@@ -40,6 +43,7 @@ const pageIds = new Set([
   'politica',
   'ciencia',
   'privacy-policy',
+  'reset-password',
   'review',
   'terms-of-use',
   'videos',
@@ -51,6 +55,9 @@ const pageAliases = {
   clima: 'clima',
   contato: 'contato',
   cultura: 'cultura',
+  'esqueci-minha-senha': 'forgot-password',
+  'forgot-password': 'forgot-password',
+  forgotpassword: 'forgot-password',
   home: 'home',
   inicio: 'home',
   login: 'login',
@@ -60,7 +67,12 @@ const pageAliases = {
   politica: 'politica',
   'politica-de-privacidade': 'privacy-policy',
   'privacy-policy': 'privacy-policy',
+  'recuperacao-de-senha': 'forgot-password',
+  'recuperar-senha': 'forgot-password',
   register: 'register',
+  'redefinir-senha': 'reset-password',
+  'reset-password': 'reset-password',
+  resetpassword: 'reset-password',
   review: 'review',
   saude: 'saude',
   'sobre-o-nexus-ia': 'about',
@@ -103,7 +115,8 @@ function getRouteFromHash() {
   }
 
   const rawHash = window.location.hash.replace('#', '').trim()
-  const normalizedHash = rawHash.toLowerCase()
+  const rawHashPath = rawHash.split('?')[0] ?? ''
+  const normalizedHash = rawHashPath.toLowerCase()
 
   if (!normalizedHash) {
     return { page: 'home', activeNav: 'home', articleSlug: null }
@@ -191,7 +204,7 @@ function App() {
       return
     }
 
-    window.location.hash = nextRoute.page
+    window.location.hash = `#${nextRoute.page}`
   }
 
   const openArticle = (slug) => {
@@ -204,8 +217,8 @@ function App() {
     }
 
     window.location.hash = nextRoute.articleSlug
-      ? `materia/${nextRoute.articleSlug}`
-      : 'not-found'
+      ? `#materia/${nextRoute.articleSlug}`
+      : '#not-found'
   }
 
   const handleAuthChange = (user) => {
@@ -234,7 +247,9 @@ function App() {
     }
 
     if (route.page === 'register') return <RegisterPage onAuthChange={handleAuthChange} onChangePage={changePage} />
+    if (route.page === 'forgot-password') return <ForgotPasswordPage onChangePage={changePage} />
     if (route.page === 'login') return <LoginPage onAuthChange={handleAuthChange} onChangePage={changePage} />
+    if (route.page === 'reset-password') return <ResetPasswordPage onChangePage={changePage} />
     if (route.page === 'not-found') return <NotFoundPage onChangePage={changePage} />
     if (route.page === 'terms-of-use') return <TermsOfUsePage onChangePage={changePage} />
     if (route.page === 'privacy-policy') return <PrivacyPolicyPage onChangePage={changePage} />

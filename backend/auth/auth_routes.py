@@ -2,15 +2,19 @@
 
 from fastapi import APIRouter, Response, Security, status
 
-from backend.auth.auth_controller import login_user, register_user
+from backend.auth.auth_controller import forgot_password_user, login_user, register_user, reset_password_user
 from backend.auth.auth_schema import (
     AuthStatusProtectedResponse,
     AuthStatusResponse,
     CurrentUserResponse,
     ErrorResponse,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LoginRequest,
     RegisterRequest,
     RegisterResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
     TokenResponse,
 )
 from backend.auth.auth_service import build_auth_runtime_status
@@ -75,6 +79,16 @@ REGISTER_RESPONSE_EXAMPLE = {
     "email": "alan.silva@example.com",
     "name": "Alan Silva",
     "role": "cliente",
+}
+
+FORGOT_PASSWORD_RESPONSE_EXAMPLE = {
+    "message": "Solicitacao recebida. Neste ambiente, o token de redefinicao e retornado diretamente para concluir o fluxo no frontend.",
+    "reset_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.reset-password.signature",
+    "expires_in_minutes": 30,
+}
+
+RESET_PASSWORD_RESPONSE_EXAMPLE = {
+    "message": "Senha redefinida com sucesso.",
 }
 
 ERROR_TOKEN_MISSING_EXAMPLE = {"detail": "Token nao fornecido."}
@@ -214,6 +228,48 @@ def login(payload: LoginRequest) -> TokenResponse:
 def register(payload: RegisterRequest) -> RegisterResponse:
     """Registra um novo usuario no sistema."""
     return register_user(payload)
+
+
+@router.post(
+    "/forgot-password",
+    response_model=ForgotPasswordResponse,
+    responses={
+        200: {
+            "description": "Fluxo de redefinicao iniciado",
+            "content": {
+                "application/json": {
+                    "example": FORGOT_PASSWORD_RESPONSE_EXAMPLE,
+                }
+            },
+        },
+    },
+)
+def forgot_password(payload: ForgotPasswordRequest) -> ForgotPasswordResponse:
+    """Inicia a recuperacao de senha."""
+    return forgot_password_user(payload)
+
+
+@router.post(
+    "/reset-password",
+    response_model=ResetPasswordResponse,
+    responses={
+        200: {
+            "description": "Senha redefinida com sucesso",
+            "content": {
+                "application/json": {
+                    "example": RESET_PASSWORD_RESPONSE_EXAMPLE,
+                }
+            },
+        },
+        400: {
+            "description": "Token invalido ou expirado",
+            "model": ErrorResponse,
+        },
+    },
+)
+def reset_password(payload: ResetPasswordRequest) -> ResetPasswordResponse:
+    """Conclui a redefinicao de senha."""
+    return reset_password_user(payload)
 
 
 @router.get(

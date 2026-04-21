@@ -1,6 +1,7 @@
 import { ApiError, request } from './api-client'
 
 const ACCESS_TOKEN_KEY = 'nexus_ai_access_token'
+const PASSWORD_RESET_TOKEN_KEY = 'nexus_ai_password_reset_token'
 
 function isBrowser() {
   return typeof window !== 'undefined'
@@ -25,6 +26,31 @@ export function clearAccessToken() {
     return
   }
   window.localStorage.removeItem(ACCESS_TOKEN_KEY)
+}
+
+export function getStoredPasswordResetToken() {
+  if (!isBrowser()) {
+    return null
+  }
+  return window.sessionStorage.getItem(PASSWORD_RESET_TOKEN_KEY)
+}
+
+export function storePasswordResetToken(token) {
+  if (!isBrowser()) {
+    return
+  }
+  if (!token) {
+    window.sessionStorage.removeItem(PASSWORD_RESET_TOKEN_KEY)
+    return
+  }
+  window.sessionStorage.setItem(PASSWORD_RESET_TOKEN_KEY, token)
+}
+
+export function clearPasswordResetToken() {
+  if (!isBrowser()) {
+    return
+  }
+  window.sessionStorage.removeItem(PASSWORD_RESET_TOKEN_KEY)
 }
 
 export async function loginWithPassword({ email, password }) {
@@ -72,4 +98,30 @@ export async function registerAndLogin({ name, email, password }) {
   await registerWithPassword({ name, email, password })
   await loginWithPassword({ email, password })
   return fetchCurrentUser()
+}
+
+export async function requestPasswordReset(email) {
+  const payload = await request('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+
+  if (payload?.reset_token) {
+    storePasswordResetToken(payload.reset_token)
+  }
+
+  return payload
+}
+
+export async function resetPasswordWithToken({ token, newPassword }) {
+  const payload = await request('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({
+      token,
+      new_password: newPassword,
+    }),
+  })
+
+  clearPasswordResetToken()
+  return payload
 }

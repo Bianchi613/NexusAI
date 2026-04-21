@@ -81,6 +81,33 @@ class RegisterRequest(BaseModel):
     }
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Payload para iniciar recuperacao de senha."""
+
+    email: EmailStr = Field(examples=["alan.silva@example.com"])
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Resposta da solicitacao de recuperacao de senha."""
+
+    message: str = Field(examples=["Se o e-mail existir, o fluxo de redefinicao foi iniciado."])
+    reset_token: str | None = Field(default=None, examples=["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."])
+    expires_in_minutes: int | None = Field(default=None, examples=[30])
+
+
+class ResetPasswordRequest(BaseModel):
+    """Payload para redefinir senha a partir de token."""
+
+    token: str = Field(examples=["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."])
+    new_password: str = Field(min_length=6, max_length=255, examples=["NovaSenha@123"])
+
+
+class ResetPasswordResponse(BaseModel):
+    """Resposta simples apos redefinicao de senha."""
+
+    message: str = Field(examples=["Senha redefinida com sucesso."])
+
+
 class TokenResponse(BaseModel):
     """Estrutura esperada para retorno futuro de login."""
 

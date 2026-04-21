@@ -19,6 +19,7 @@ SECRET_KEY = os.getenv(
 )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
+RESET_PASSWORD_TOKEN_EXPIRE_MINUTES = 30
 
 # Esquema de seguranca para o Swagger
 security = HTTPBearer(auto_error=False)
@@ -57,6 +58,18 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
+def create_password_reset_token(*, user_id: int, email: str) -> str:
+    """Cria um token temporario para redefinicao de senha."""
+    return create_access_token(
+        {
+            "sub": str(user_id),
+            "email": email,
+            "purpose": "reset_password",
+        },
+        expires_delta=timedelta(minutes=RESET_PASSWORD_TOKEN_EXPIRE_MINUTES),
+    )
+
+
 def verify_token(token: str) -> dict | None:
     """Valida um JWT token e retorna os dados se valido."""
     try:
@@ -66,6 +79,16 @@ def verify_token(token: str) -> dict | None:
         return None
     except jwt.InvalidTokenError:
         return None
+
+
+def verify_password_reset_token(token: str) -> dict | None:
+    """Valida token de redefinicao de senha e confere o proposito."""
+    payload = verify_token(token)
+    if payload is None:
+        return None
+    if payload.get("purpose") != "reset_password":
+        return None
+    return payload
 
 
 def get_token_from_header(authorization: Optional[str]) -> Optional[str]:
