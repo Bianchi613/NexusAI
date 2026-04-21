@@ -1,9 +1,5 @@
-export default function PoliticaPage() {
-  return (
-    <section>
-      <p>POLÍTICA</p>
-      <h1>Política</h1>
-      <p>Últimas matérias, análises e destaques da editoria de política.</p>
-    </section>
-  );
+import EditorialPage from '../../components/editorial-page/index.jsx'
+
+export default function PoliticaPage({ onOpenArticle }) {
+  return <EditorialPage page="politica" onOpenArticle={onOpenArticle} />
 }

@@ -1,13 +1,18 @@
 :root {
-  font-family: 'Segoe UI', Arial, sans-serif;
-  --sans: 'Segoe UI', Arial, sans-serif;
-  --serif: Georgia, 'Times New Roman', serif;
-  --page: #ffffff;
-  --ink: #111111;
-  --muted: #5d5d5d;
-  --line: #d9d9d9;
-  --soft: #f3f3f3;
-  --accent: #b80000;
+  font-family: 'Aptos', 'Segoe UI', 'Trebuchet MS', sans-serif;
+  --sans: 'Aptos', 'Segoe UI', 'Trebuchet MS', sans-serif;
+  --serif: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  --page: #f3ede3;
+  --surface: rgba(255, 255, 255, 0.84);
+  --ink: #171411;
+  --muted: #62564d;
+  --line: #d7cbbe;
+  --soft: #ece2d3;
+  --accent: #a63a1f;
+  --accent-strong: #7d2310;
+  --gold: #c9922f;
+  --shadow: 0 24px 60px rgba(41, 31, 22, 0.1);
+  --shadow-soft: 0 14px 30px rgba(41, 31, 22, 0.07);
   color: var(--ink);
   background: var(--page);
   line-height: 1.5;
@@ -30,7 +35,16 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: var(--page);
+  background:
+    radial-gradient(circle at top, rgba(201, 146, 47, 0.15), transparent 24%),
+    linear-gradient(180deg, #f7f3ec 0%, var(--page) 100%);
+}
+
+body,
+button,
+input,
+textarea {
+  font-family: var(--sans);
 }
 
 a {
@@ -54,21 +68,23 @@ h1,
 h2 {
   font-family: var(--serif);
   color: var(--ink);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 h1 {
   font-size: clamp(2.6rem, 5vw, 4.7rem);
-  line-height: 0.95;
+  line-height: 0.92;
 }
 
 h2 {
   font-size: clamp(1.55rem, 2.2vw, 2.2rem);
-  line-height: 1;
+  line-height: 0.98;
 }
 
 h3 {
   color: var(--ink);
+  font-size: 1.18rem;
+  line-height: 1.15;
 }
 
 p,

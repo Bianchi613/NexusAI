@@ -6,9 +6,10 @@
 
 .brand-wordmark__image {
   display: block;
-  width: min(100%, 280px);
-  height: 58px;
+  width: min(100%, 292px);
+  height: 60px;
   object-fit: contain;
+  filter: saturate(1.05) contrast(1.02);
 }
 
 .brand-wordmark--footer {
@@ -17,7 +18,7 @@
 
 .brand-wordmark--footer .brand-wordmark__image {
   width: min(100%, 260px);
-  height: 58px;
+  height: 54px;
 }
 
 @media (max-width: 720px) {

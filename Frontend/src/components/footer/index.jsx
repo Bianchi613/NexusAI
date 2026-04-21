@@ -1,6 +1,7 @@
 import './footer.css'
 import BrandWordmark from '../brand-wordmark/index.jsx'
 import { footerSections } from '../../data/portalData'
+import { mapSectionToPage } from '../../utils/navigation'
 
 const socialLinks = [
   {
@@ -73,27 +74,15 @@ const socialLinks = [
   },
 ]
 
-function mapSectionToPage(section) {
-  const normalized = section.trim().toLowerCase()
-
-  if (normalized === 'início' || normalized === 'inicio') return 'home'
-  if (normalized === 'notícias' || normalized === 'noticias') return 'noticias'
-  if (normalized === 'negócios' || normalized === 'negocios') return 'negocios'
-  if (normalized === 'tecnologia') return 'tecnologia'
-  if (normalized === 'saúde' || normalized === 'saude') return 'saude'
-  if (normalized === 'cultura') return 'cultura'
-  if (normalized === 'política' || normalized === 'politica') return 'politica'
-  if (normalized === 'laboratório ia' || normalized === 'laboratorio ia') return 'laboratorio-ia'
-  if (normalized === 'vídeos' || normalized === 'videos') return 'videos'
-
-  return 'home'
-}
-
 function Footer({ onChangePage }) {
   return (
     <footer className="site-footer">
       <div className="footer-brand">
         <BrandWordmark className="brand-wordmark--footer" />
+        <p>
+          Jornal digital com linguagem de redacao, cadastro integrado e espaco pronto
+          para uma operacao de noticias em fluxo continuo.
+        </p>
       </div>
 
       <nav className="footer-nav" aria-label="Mapa do portal">

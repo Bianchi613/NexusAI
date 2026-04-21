@@ -8,7 +8,13 @@
 }
 
 .footer-brand {
+  display: grid;
+  gap: 12px;
   padding-top: 18px;
+}
+
+.footer-brand p {
+  max-width: 56ch;
 }
 
 .footer-nav,
@@ -24,6 +30,11 @@
 .footer-links a {
   color: var(--ink);
   text-decoration: none;
+}
+
+.footer-nav a:hover,
+.footer-links a:hover {
+  color: var(--accent-strong);
 }
 
 .social-row {
@@ -46,6 +57,8 @@
   width: 32px;
   height: 32px;
   color: var(--ink);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
   transition:
     opacity 180ms ease,
     transform 180ms ease;

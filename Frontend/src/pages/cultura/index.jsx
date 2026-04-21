@@ -1,9 +1,5 @@
-export default function CulturaPage() {
-  return (
-    <section>
-      <p>CULTURA</p>
-      <h1>Cultura</h1>
-      <p>Últimas matérias, análises e destaques da editoria de cultura.</p>
-    </section>
-  );
+import EditorialPage from '../../components/editorial-page/index.jsx'
+
+export default function CulturaPage({ onOpenArticle }) {
+  return <EditorialPage page="cultura" onOpenArticle={onOpenArticle} />
 }

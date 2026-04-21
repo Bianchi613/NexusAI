@@ -2,8 +2,11 @@
   display: grid;
   gap: 18px;
   padding: 28px;
-  background: #1b1b1b;
+  background:
+    radial-gradient(circle at top right, rgba(201, 146, 47, 0.22), transparent 24%),
+    linear-gradient(135deg, #191512, #2b221c 58%, #120f0d);
   color: #ffffff;
+  box-shadow: var(--shadow);
 }
 
 .watch-head {
@@ -33,6 +36,7 @@
   height: 40px;
   border: 1px solid rgba(255, 255, 255, 0.4);
   background: transparent;
+  border-radius: 999px;
   color: #ffffff;
   font: inherit;
   cursor: pointer;
@@ -47,6 +51,7 @@
 .watch-card {
   display: grid;
   gap: 12px;
+  padding: 0 0 6px;
 }
 
 .watch-card h3,
@@ -59,7 +64,7 @@
   min-height: 170px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
-    linear-gradient(135deg, #4a4a4a, #222222);
+    linear-gradient(135deg, #5c4a3e, #221b17);
   overflow: hidden;
 }
 

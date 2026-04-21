@@ -1,7 +1,7 @@
 .sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.24);
+  background: rgba(17, 12, 8, 0.34);
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms ease;
@@ -19,7 +19,9 @@
   width: min(360px, 100%);
   height: 100%;
   padding: 20px;
-  background: #ffffff;
+  background:
+    radial-gradient(circle at top left, rgba(201, 146, 47, 0.12), transparent 28%),
+    #fbf7f0;
   transform: translateX(-100%);
   transition: transform 180ms ease;
   overflow-y: auto;
@@ -98,8 +100,8 @@
   grid-template-columns: 1fr auto;
   gap: 0;
   margin-bottom: 20px;
-  border: 2px solid #454545;
-  background: #ffffff;
+  border: 1px solid rgba(43, 37, 32, 0.12);
+  background: rgba(255, 255, 255, 0.84);
 }
 
 .sidebar-search input {
@@ -119,7 +121,7 @@
   position: relative;
   width: 60px;
   border: 0;
-  background: #3a3a3a;
+  background: var(--ink);
   color: #ffffff;
   cursor: pointer;
   transition: background-color 180ms ease;
@@ -170,6 +172,7 @@
 }
 
 .sidebar-link.is-active {
+  color: var(--accent-strong);
   font-weight: 700;
 }
 

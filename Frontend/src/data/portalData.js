@@ -4,9 +4,10 @@ export const topSections = [
   'Negocios',
   'Tecnologia',
   'Saude',
+  'Clima',
   'Cultura',
-  'Política',
-  'Laboratorio IA',
+  'Politica',
+  'Ciencia',
   'Videos',
 ]
 
@@ -16,8 +17,10 @@ export const sectionSummaries = {
   Negocios: 'Mercados, empresas e impacto economico filtrados pelo pipeline do Nexus IA.',
   Tecnologia: 'A camada que conecta IA, software e operacao editorial em um unico portal.',
   Saude: 'Noticias de saude preparadas para destaque e aprofundamento dentro da mesma estrutura.',
+  Clima: 'Cobertura de clima com alertas, previsoes e contexto para acompanhar impactos e mudancas ao longo do dia.',
   Cultura: 'Cobertura de cultura com layout de jornal digital e hierarquia clara de chamadas.',
-  'Laboratorio IA': 'Espaco para pesquisas, experimentos e atualizacoes da infraestrutura de inteligencia artificial.',
+  Politica: 'Leitura de politica preparada para acompanhamento, contexto e entradas de ultima hora.',
+  Ciencia: 'Espaco para pesquisas, descobertas e avancos cientificos com leitura de contexto e aprofundamento.',
   Videos: 'Faixa de videos e conteudo visual pronta para receber clipes e destaques do portal.',
   'Ao vivo': 'Blocos ao vivo preparados para cobertura em tempo real e atualizacao continua.',
 }
@@ -111,9 +114,10 @@ export const footerSections = [
   'Negocios',
   'Tecnologia',
   'Saude',
-  'Cultura'
-  ,'Política',
-  'Laboratorio IA',
+  'Clima',
+  'Cultura',
+  'Politica',
+  'Ciencia',
   'Videos',
   'Sobre o Nexus IA',
 ]

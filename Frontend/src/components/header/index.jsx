@@ -1,28 +1,9 @@
 import './header.css'
 import BrandWordmark from '../brand-wordmark/index.jsx'
 import { topSections } from '../../data/portalData'
+import { mapSectionToPage } from '../../utils/navigation'
 
-function mapSectionToPage(section) {
-  const normalized = section.trim().toLowerCase()
-
-  if (normalized === 'início' || normalized === 'inicio') return 'home'
-  if (normalized === 'notícias' || normalized === 'noticias') return 'noticias'
-  if (normalized === 'negócios' || normalized === 'negocios') return 'negocios'
-  if (normalized === 'tecnologia') return 'tecnologia'
-  if (normalized === 'saúde' || normalized === 'saude') return 'saude'
-  if (normalized === 'cultura') return 'cultura'
-  if (normalized === 'política' || normalized === 'politica') return 'politica'
-  if (normalized === 'laboratório ia' || normalized === 'laboratorio ia') return 'laboratorio-ia'
-  if (normalized === 'vídeos' || normalized === 'videos') return 'videos'
-
-  return 'home'
-}
-
-function Header({
-  activePage,
-  onChangePage,
-  onOpenMenu,
-}) {
+function Header({ activePage, onChangePage, onOpenMenu }) {
   return (
     <header className="site-header">
       <div className="top-header">
@@ -38,6 +19,7 @@ function Header({
               <span></span>
               <span></span>
             </span>
+            <span className="menu-search-button__label">Menu</span>
             <span className="menu-search-button__search" aria-hidden="true"></span>
           </button>
         </div>
@@ -48,7 +30,10 @@ function Header({
           onClick={() => onChangePage('home')}
           aria-label="Ir para a pagina inicial"
         >
-          <BrandWordmark />
+          <span className="brand-lockup__stack">
+            <span className="brand-lockup__eyebrow">Portal editorial AI-first</span>
+            <BrandWordmark />
+          </span>
         </button>
 
         <div className="account-actions">

@@ -10,10 +10,14 @@ function HomePage({ activeSection, onChangePage }) {
     <section className="home-page">
       <div className="hero-grid">
         <article className="hero-main">
-          <p className="story-kicker">{activeSection}</p>
+          <div className="hero-label-row">
+            <p className="story-kicker">{activeSection}</p>
+            <span className="hero-live-pill">Edicao ao vivo</span>
+          </div>
+
           <h1>
-            Nexus IA monta uma home de noticias com cara de portal editorial e
-            espaco real para cadastro, login e leitura diaria.
+            Nexus IA monta uma home com peso de portal editorial e caminho claro para cadastro,
+            login e leitura diaria.
           </h1>
           <p className="hero-summary">{summary}</p>
 
@@ -27,8 +31,24 @@ function HomePage({ activeSection, onChangePage }) {
           </div>
 
           <div className="hero-meta">
-            <span>Atualizado agora</span>
+            <span>Atualizado ha poucos minutos</span>
             <span>Redacao Nexus IA</span>
+            <span>Briefing continuo</span>
+          </div>
+
+          <div className="hero-metrics">
+            <div>
+              <strong>24/7</strong>
+              <span>Monitoramento de sinais</span>
+            </div>
+            <div>
+              <strong>09</strong>
+              <span>Editorias ja mapeadas</span>
+            </div>
+            <div>
+              <strong>01</strong>
+              <span>Fluxo unificado de conta e leitura</span>
+            </div>
           </div>
         </article>
 
@@ -39,13 +59,18 @@ function HomePage({ activeSection, onChangePage }) {
             </div>
             <div className="hero-visual-copy">
               <p className="story-kicker">Visao da plataforma</p>
-              <h2>Mais proximo de uma capa editorial do que de uma landing generica.</h2>
+              <h2>Mais proximo de uma capa de jornal digital do que de uma landing generica.</h2>
+              <p>
+                A primeira dobra organiza hierarquia, ritmo e contraste para que as noticias
+                ocupem o centro da experiencia.
+              </p>
             </div>
           </div>
 
           <div className="rail-panel">
             <div className="rail-panel-head">
               <h3>Mais lidas</h3>
+              <p>Leitura recorrente com mais peso editorial.</p>
             </div>
             <ol className="most-read-list">
               {mostRead.map((story) => (
@@ -62,6 +87,7 @@ function HomePage({ activeSection, onChangePage }) {
             <p className="story-kicker">{story.label}</p>
             <h2>{story.title}</h2>
             <p>{story.summary}</p>
+            <span className="secondary-story__link">Continuar leitura</span>
           </article>
         ))}
       </div>

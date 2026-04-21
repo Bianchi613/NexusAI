@@ -8,7 +8,7 @@
   margin: 0 auto;
   display: grid;
   gap: 36px;
-  padding: 24px 0 44px;
+  padding: 30px 0 52px;
 }
 
 .story-kicker {
@@ -39,12 +39,15 @@
 
 .primary-link,
 .submit-button {
-  min-height: 44px;
-  padding: 0 18px;
+  min-height: 46px;
+  padding: 0 20px;
   border: 0;
-  background: #111111;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--ink), #40342c);
   color: #ffffff;
   font: inherit;
+  font-weight: 700;
+  box-shadow: 0 12px 24px rgba(28, 24, 20, 0.16);
   cursor: pointer;
 }
 
@@ -56,6 +59,7 @@
   background: transparent;
   font: inherit;
   font-weight: 600;
+  color: var(--accent-strong);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -68,15 +72,16 @@
 .section-bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 14px;
-  padding-bottom: 12px;
+  padding: 0 0 14px;
   border-bottom: 3px solid var(--ink);
 }
 
 .section-bar h2 {
   font-family: var(--sans);
+  font-size: clamp(1.55rem, 2.4vw, 2.3rem);
 }
 
 .news-grid {
@@ -89,6 +94,28 @@
   display: grid;
   gap: 12px;
   min-width: 0;
+  padding: 22px;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(43, 37, 32, 0.08);
+  border-top: 4px solid var(--ink);
+  box-shadow: var(--shadow-soft);
+}
+
+.editorial-placeholder {
+  display: grid;
+  gap: 14px;
+  padding: 32px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.88)),
+    radial-gradient(circle at top left, rgba(201, 146, 47, 0.14), transparent 36%);
+  border: 1px solid rgba(43, 37, 32, 0.08);
+  border-top: 4px solid var(--accent);
+  box-shadow: var(--shadow);
+}
+
+.editorial-placeholder p:last-child {
+  max-width: 62ch;
+  font-size: 1.05rem;
 }
 
 @media (max-width: 1120px) {
@@ -109,5 +136,10 @@
   .brand-boxes span {
     min-width: 46px;
     height: 36px;
+  }
+
+  .news-card,
+  .editorial-placeholder {
+    padding: 20px;
   }
 }

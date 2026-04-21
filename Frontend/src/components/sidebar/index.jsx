@@ -1,21 +1,6 @@
 import './sidebar.css'
 import { topSections } from '../../data/portalData'
-
-function mapSectionToPage(section) {
-  const normalized = section.trim().toLowerCase()
-
-  if (normalized === 'início' || normalized === 'inicio') return 'home'
-  if (normalized === 'notícias' || normalized === 'noticias') return 'noticias'
-  if (normalized === 'negócios' || normalized === 'negocios') return 'negocios'
-  if (normalized === 'tecnologia') return 'tecnologia'
-  if (normalized === 'saúde' || normalized === 'saude') return 'saude'
-  if (normalized === 'cultura') return 'cultura'
-  if (normalized === 'política' || normalized === 'politica') return 'politica'
-  if (normalized === 'laboratório ia' || normalized === 'laboratorio ia') return 'laboratorio-ia'
-  if (normalized === 'vídeos' || normalized === 'videos') return 'videos'
-
-  return 'home'
-}
+import { mapSectionToPage } from '../../utils/navigation'
 
 function Sidebar({ activePage, isOpen, onClose, onChangePage }) {
   return (

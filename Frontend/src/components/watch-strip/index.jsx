@@ -20,7 +20,7 @@ function WatchStrip({ onNext, onPrevious, stories }) {
           <article className="watch-card" key={story.title}>
             <div className="watch-thumb">
               <span className="watch-tag">{story.tag}</span>
-              <span className="watch-stamp">Nexus ΔI</span>
+              <span className="watch-stamp">Nexus AI</span>
             </div>
             <h3>{story.title}</h3>
             <p>{story.summary}</p>
