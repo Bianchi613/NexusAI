@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, ForeignKey, String, Text, UniqueConstraint, func
-from sqlalchemy.ext.mutable import MutableList
+from sqlalchemy.ext.mutable import MutableDict, MutableList
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -183,3 +183,65 @@ class ProcessingFailure(Base):
 
     source: Mapped[Optional["NewsSource"]] = relationship(back_populates="processing_failures")
     raw_article: Mapped[Optional["RawArticle"]] = relationship(back_populates="processing_failures")
+
+
+class WeatherForecastSnapshot(Base):
+    """Snapshot normalizado de previsao para uma localidade monitorada."""
+    __tablename__ = "weather_forecast_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    location_key: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    city_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    state_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    state_name: Mapped[Optional[str]] = mapped_column(String(80))
+    source_name: Mapped[str] = mapped_column(String(40), nullable=False)
+    source_url: Mapped[Optional[str]] = mapped_column(Text)
+    headline: Mapped[Optional[str]] = mapped_column(Text)
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    daily_forecast: Mapped[List[dict]] = mapped_column(
+        MutableList.as_mutable(JSON),
+        nullable=False,
+        default=list,
+    )
+    advisory_items: Mapped[List[str]] = mapped_column(
+        MutableList.as_mutable(JSON),
+        nullable=False,
+        default=list,
+    )
+    extra_payload: Mapped[dict] = mapped_column(
+        MutableDict.as_mutable(JSON),
+        nullable=False,
+        default=dict,
+    )
+    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+
+class WeatherAlert(Base):
+    """Alerta meteorologico normalizado e persistido para consulta rapida."""
+    __tablename__ = "weather_alerts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    external_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    source_name: Mapped[str] = mapped_column(String(40), nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(String(30), nullable=False, default="informativo")
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="ativo")
+    area: Mapped[Optional[str]] = mapped_column(Text)
+    areas: Mapped[List[str]] = mapped_column(
+        MutableList.as_mutable(JSON),
+        nullable=False,
+        default=list,
+    )
+    source_url: Mapped[Optional[str]] = mapped_column(Text)
+    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    effective_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    payload: Mapped[dict] = mapped_column(
+        MutableDict.as_mutable(JSON),
+        nullable=False,
+        default=dict,
+    )
+    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

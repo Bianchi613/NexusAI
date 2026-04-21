@@ -18,6 +18,7 @@ from backend.config.settings import settings
 from backend.review.review_routes import router as review_router
 from backend.tags.tag_routes import router as tag_router
 from backend.users.user_routes import router as user_router
+from backend.weather.weather_routes import router as weather_router
 
 
 def create_app() -> FastAPI:
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
     api_router.include_router(category_router)
     api_router.include_router(tag_router)
     api_router.include_router(review_router)
+    api_router.include_router(weather_router)
 
     app.include_router(api_router, prefix=settings.api_prefix)
     return app

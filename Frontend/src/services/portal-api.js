@@ -22,6 +22,23 @@ function formatPublishedAt(value) {
   return formatter.format(date).replace(/\./g, '')
 }
 
+function formatForecastDate(value) {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(`${value}T12:00:00`)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    timeZone: 'America/Sao_Paulo',
+  }).format(date).replace(/\./g, '')
+}
+
 function formatReadTime(value) {
   const minutes = Number(value)
   if (!Number.isFinite(minutes) || minutes <= 0) {
@@ -128,6 +145,77 @@ function mapHome(payload) {
   }
 }
 
+function mapWeatherDay(day) {
+  return {
+    date: day.date,
+    label: formatForecastDate(day.date),
+    conditionCode: day.condition_code ?? null,
+    condition: day.condition ?? 'Condicao indisponivel',
+    minTempC: day.min_temp_c ?? null,
+    maxTempC: day.max_temp_c ?? null,
+    uvIndex: day.uv_index ?? null,
+    rainProbability: day.rain_probability ?? null,
+  }
+}
+
+function mapWeatherLocation(location) {
+  const daily = (location.daily ?? []).map(mapWeatherDay)
+
+  return {
+    locationKey: location.location_key,
+    city: location.city,
+    stateCode: location.state_code,
+    stateName: location.state_name ?? '',
+    displayName: location.display_name,
+    headline: location.headline,
+    summary: location.summary,
+    advisoryItems: location.advisory_items ?? [],
+    sourceName: location.source_name,
+    sourceUrl: location.source_url ?? null,
+    updatedAt: formatPublishedAt(location.updated_at),
+    daily,
+    weekRange:
+      daily.length > 0
+        ? `${daily[0].label} - ${daily[Math.min(daily.length - 1, 6)].label}`
+        : 'Semana atual',
+  }
+}
+
+function mapWeatherAlert(alert) {
+  return {
+    externalId: alert.external_id,
+    sourceName: alert.source_name,
+    title: alert.title,
+    summary: alert.summary ?? '',
+    severity: alert.severity ?? 'informativo',
+    status: alert.status ?? 'ativo',
+    area: alert.area ?? '',
+    areas: alert.areas ?? [],
+    sourceUrl: alert.source_url ?? null,
+    publishedAt: formatPublishedAt(alert.published_at),
+    effectiveAt: formatPublishedAt(alert.effective_at),
+    expiresAt: formatPublishedAt(alert.expires_at),
+    isActive: Boolean(alert.is_active),
+  }
+}
+
+function mapWeatherOverview(payload) {
+  return {
+    summary: {
+      headline: payload.summary.headline,
+      description: payload.summary.summary,
+      advisoryItems: payload.summary.advisory_items ?? [],
+      sourceNames: payload.summary.source_names ?? [],
+      updatedAt: formatPublishedAt(payload.summary.updated_at),
+      locationCount: payload.summary.location_count ?? 0,
+      activeAlertCount: payload.summary.active_alert_count ?? 0,
+      severeAlertCount: payload.summary.severe_alert_count ?? 0,
+    },
+    locations: (payload.locations ?? []).map(mapWeatherLocation),
+    alerts: (payload.alerts ?? []).map(mapWeatherAlert),
+  }
+}
+
 export async function fetchHomeData() {
   const payload = await request('/home')
   return mapHome(payload)
@@ -218,6 +306,11 @@ export async function fetchVideosPage() {
     articles: videoArticles,
     hasMore: false,
   }
+}
+
+export async function fetchWeatherOverview() {
+  const payload = await request('/weather/overview')
+  return mapWeatherOverview(payload)
 }
 
 export { ApiError }
