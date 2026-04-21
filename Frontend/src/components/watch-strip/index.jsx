@@ -5,14 +5,16 @@ function WatchStrip({ onNext, onPrevious, onOpenArticle, stories }) {
     <section className="watch-strip">
       <div className="watch-head">
         <h2>Mais noticias</h2>
-        <div className="watch-controls">
-          <button type="button" onClick={onPrevious} aria-label="Ver noticias anteriores">
-            &lt;
-          </button>
-          <button type="button" onClick={onNext} aria-label="Ver proximas noticias">
-            &gt;
-          </button>
-        </div>
+        {stories.length > 1 ? (
+          <div className="watch-controls">
+            <button type="button" onClick={onPrevious} aria-label="Ver noticias anteriores">
+              &lt;
+            </button>
+            <button type="button" onClick={onNext} aria-label="Ver proximas noticias">
+              &gt;
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div className="watch-track">

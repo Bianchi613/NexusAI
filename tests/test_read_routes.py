@@ -173,3 +173,93 @@ def test_invalid_virtual_slug_returns_404(monkeypatch) -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Artigo publicado nao encontrado."}
+
+
+def test_home_watch_articles_prioritize_articles_with_image_by_category(monkeypatch) -> None:
+    """A home deve preferir uma materia com imagem por editoria na faixa inferior."""
+    session_factory = _configure_in_memory_read_db(monkeypatch)
+
+    with session_factory() as session:
+        categoria_geral = Category(name="Geral", slug="geral")
+        categoria_politica = Category(name="Politica", slug="politica")
+        categoria_tecnologia = Category(name="Tecnologia", slug="tecnologia")
+        categoria_ciencia = Category(name="Ciencia", slug="ciencia")
+        session.add_all([categoria_geral, categoria_politica, categoria_tecnologia, categoria_ciencia])
+        session.flush()
+
+        latest_articles = [
+            GeneratedArticle(
+                title=f"Ultima geral {index}",
+                summary="Resumo geral",
+                body="Corpo da materia geral.",
+                category_id=categoria_geral.id,
+                status="publicada",
+                tags=[],
+                image_urls=[f"https://example.com/geral-{index}.jpg"],
+                video_urls=[],
+            )
+            for index in range(6)
+        ]
+
+        politica_sem_imagem = GeneratedArticle(
+            title="Politica sem imagem",
+            summary="Resumo da politica sem imagem",
+            body="Corpo da materia sem imagem.",
+            category_id=categoria_politica.id,
+            status="publicada",
+            tags=[],
+            image_urls=[],
+            video_urls=[],
+        )
+        politica_com_imagem = GeneratedArticle(
+            title="Politica com imagem",
+            summary="Resumo da politica com imagem",
+            body="Corpo da materia com imagem.",
+            category_id=categoria_politica.id,
+            status="publicada",
+            tags=[],
+            image_urls=["https://example.com/politica.jpg"],
+            video_urls=[],
+        )
+        tecnologia_com_imagem = GeneratedArticle(
+            title="Tecnologia com imagem",
+            summary="Resumo de tecnologia",
+            body="Corpo da materia de tecnologia.",
+            category_id=categoria_tecnologia.id,
+            status="publicada",
+            tags=[],
+            image_urls=["https://example.com/tecnologia.jpg"],
+            video_urls=[],
+        )
+        ciencia_com_imagem = GeneratedArticle(
+            title="Ciencia com imagem",
+            summary="Resumo de ciencia",
+            body="Corpo da materia de ciencia.",
+            category_id=categoria_ciencia.id,
+            status="publicada",
+            tags=[],
+            image_urls=["https://example.com/ciencia.jpg"],
+            video_urls=[],
+        )
+
+        session.add_all(
+            [
+                politica_sem_imagem,
+                politica_com_imagem,
+                tecnologia_com_imagem,
+                ciencia_com_imagem,
+                *latest_articles,
+            ]
+        )
+        session.commit()
+
+    client = TestClient(app)
+
+    home_response = client.get("/api/v1/home")
+
+    assert home_response.status_code == 200
+    home_payload = home_response.json()
+    watch_titles = [item["title"] for item in home_payload["watch_articles"]]
+
+    assert "Politica com imagem" in watch_titles
+    assert "Politica sem imagem" not in watch_titles

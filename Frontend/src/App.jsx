@@ -185,6 +185,7 @@ function App() {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         onChangePage={changePage}
+        onOpenArticle={openArticle}
       />
 
       <Header

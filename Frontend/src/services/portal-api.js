@@ -129,4 +129,16 @@ export async function fetchArticlePage(slug) {
   return mapArticleDetail(payload)
 }
 
+export async function fetchPublishedArticles({ limit = 100, offset = 0 } = {}) {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  })
+  const payload = await request(`/articles/published?${params.toString()}`)
+  return {
+    items: (payload.items ?? []).map(mapArticleCard),
+    hasMore: payload.has_more ?? false,
+  }
+}
+
 export { ApiError }

@@ -58,8 +58,16 @@ function HomePage({ activeSection, onChangePage, onOpenArticle }) {
   const heroArticle = homeData?.heroArticle
   const latestArticles = homeData?.latestArticles ?? []
   const watchArticles = homeData?.watchArticles ?? []
+  const prioritizedWatchArticles = [
+    ...watchArticles.filter((article) => article.imageUrl),
+    ...watchArticles.filter((article) => !article.imageUrl),
+  ]
   const featuredCategories = homeData?.featuredCategories ?? []
-  const visibleWatchStories = getCarouselSlice(watchArticles, carouselStart, Math.min(4, watchArticles.length))
+  const visibleWatchStories = getCarouselSlice(
+    prioritizedWatchArticles,
+    carouselStart,
+    Math.min(4, prioritizedWatchArticles.length),
+  )
 
   if (status === 'loading') {
     return (
@@ -130,7 +138,7 @@ function HomePage({ activeSection, onChangePage, onOpenArticle }) {
             </div>
             <div>
               <strong>{watchArticles.length}</strong>
-              <span>Materias extras na faixa inferior</span>
+              <span>Materias na faixa inferior</span>
             </div>
           </div>
         </article>
@@ -194,14 +202,16 @@ function HomePage({ activeSection, onChangePage, onOpenArticle }) {
         </div>
       </section>
 
-      {watchArticles.length > 0 ? (
+      {prioritizedWatchArticles.length > 0 ? (
         <WatchStrip
           stories={visibleWatchStories}
           onNext={() => {
-            setCarouselStart((current) => (current + 1) % watchArticles.length)
+            setCarouselStart((current) => (current + 1) % prioritizedWatchArticles.length)
           }}
           onPrevious={() => {
-            setCarouselStart((current) => (current - 1 + watchArticles.length) % watchArticles.length)
+            setCarouselStart((current) => {
+              return (current - 1 + prioritizedWatchArticles.length) % prioritizedWatchArticles.length
+            })
           }}
           onOpenArticle={onOpenArticle}
         />
