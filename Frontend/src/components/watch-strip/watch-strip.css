@@ -52,6 +52,12 @@
   display: grid;
   gap: 12px;
   padding: 0 0 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .watch-card h3,

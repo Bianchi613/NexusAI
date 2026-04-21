@@ -3,7 +3,7 @@ import BrandWordmark from '../brand-wordmark/index.jsx'
 import { topSections } from '../../data/portalData'
 import { mapSectionToPage } from '../../utils/navigation'
 
-function Header({ activePage, onChangePage, onOpenMenu }) {
+function Header({ activePage, currentUser, onChangePage, onLogout, onOpenMenu }) {
   return (
     <header className="site-header">
       <div className="top-header">
@@ -37,20 +37,34 @@ function Header({ activePage, onChangePage, onOpenMenu }) {
         </button>
 
         <div className="account-actions">
-          <button
-            className="action-button action-button-solid"
-            type="button"
-            onClick={() => onChangePage('register')}
-          >
-            Cadastre-se
-          </button>
-          <button
-            className="action-button"
-            type="button"
-            onClick={() => onChangePage('login')}
-          >
-            Entrar
-          </button>
+          {currentUser ? (
+            <>
+              <div className="account-badge">
+                <strong>{currentUser.email}</strong>
+                <span>{currentUser.role}</span>
+              </div>
+              <button className="action-button" type="button" onClick={onLogout}>
+                Sair
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="action-button action-button-solid"
+                type="button"
+                onClick={() => onChangePage('register')}
+              >
+                Cadastre-se
+              </button>
+              <button
+                className="action-button"
+                type="button"
+                onClick={() => onChangePage('login')}
+              >
+                Entrar
+              </button>
+            </>
+          )}
         </div>
       </div>
 

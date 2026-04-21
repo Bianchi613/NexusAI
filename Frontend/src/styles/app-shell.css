@@ -99,6 +99,10 @@
   border: 1px solid rgba(43, 37, 32, 0.08);
   border-top: 4px solid var(--ink);
   box-shadow: var(--shadow-soft);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .editorial-placeholder {

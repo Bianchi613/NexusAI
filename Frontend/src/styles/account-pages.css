@@ -59,6 +59,23 @@
   font: inherit;
 }
 
+.account-message {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(43, 37, 32, 0.08);
+  font-size: 0.95rem;
+}
+
+.account-message.is-error {
+  background: rgba(166, 58, 31, 0.08);
+  color: var(--accent-strong);
+}
+
+.account-message.is-success {
+  background: rgba(37, 94, 53, 0.08);
+  color: #255e35;
+}
+
 .benefit-panel ul,
 .plan-card ul {
   margin: 0;

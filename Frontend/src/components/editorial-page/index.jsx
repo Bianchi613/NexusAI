@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { getArticlesByPage, getCategoryContent } from '../../data/contentData'
+import { useEffect, useState } from 'react'
+import NotFoundPage from '../../pages/not-found/index.jsx'
+import { ApiError, fetchCategoryPage } from '../../services/portal-api'
 import './editorial-page.css'
 
 function getCarouselSlice(items, start, count) {
@@ -12,12 +13,74 @@ function getCarouselSlice(items, start, count) {
   })
 }
 
-function EditorialPage({ page, onOpenArticle }) {
-  const content = getCategoryContent(page)
-  const articles = getArticlesByPage(page)
-  const featuredArticle = articles[0]
-  const carouselPool = articles.slice(1)
+function EditorialPage({ page, onChangePage, onOpenArticle }) {
   const [carouselStart, setCarouselStart] = useState(0)
+  const [content, setContent] = useState(null)
+  const [status, setStatus] = useState('loading')
+  const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    let isActive = true
+
+    setCarouselStart(0)
+    setStatus('loading')
+    setErrorMessage('')
+
+    const loadCategory = async () => {
+      try {
+        const data = await fetchCategoryPage(page)
+        if (!isActive) {
+          return
+        }
+        setContent(data)
+        setStatus('success')
+      } catch (error) {
+        if (!isActive) {
+          return
+        }
+        setStatus('error')
+        setErrorMessage(
+          error instanceof ApiError
+            ? error.message
+            : 'Nao foi possivel carregar a editoria.',
+        )
+      }
+    }
+
+    loadCategory()
+
+    return () => {
+      isActive = false
+    }
+  }, [page])
+
+  if (status === 'loading') {
+    return (
+      <section className="editorial-placeholder">
+        <p className="story-kicker">Carregando editoria</p>
+        <h1>Buscando materias publicadas para {page}.</h1>
+        <p>Assim que o backend responder, a vitrine da editoria sera montada com os dados reais.</p>
+      </section>
+    )
+  }
+
+  if (status === 'error') {
+    if (errorMessage.toLowerCase().includes('nao encontrada')) {
+      return <NotFoundPage onChangePage={onChangePage} />
+    }
+
+    return (
+      <section className="editorial-placeholder">
+        <p className="story-kicker">Editoria indisponivel</p>
+        <h1>Nao foi possivel carregar essa pagina.</h1>
+        <p>{errorMessage}</p>
+      </section>
+    )
+  }
+
+  const articles = content?.articles ?? []
+  const featuredArticle = content?.featuredArticle ?? null
+  const carouselPool = articles.slice(1)
   const visibleArticles = getCarouselSlice(
     carouselPool,
     carouselStart,
@@ -25,7 +88,13 @@ function EditorialPage({ page, onOpenArticle }) {
   )
 
   if (!content || !featuredArticle) {
-    return null
+    return (
+      <section className="editorial-placeholder">
+        <p className="story-kicker">Editoria sem publicacoes</p>
+        <h1>Ainda nao ha materias publicadas nessa editoria.</h1>
+        <p>Quando novas materias forem publicadas no backend, elas aparecerao aqui automaticamente.</p>
+      </section>
+    )
   }
 
   return (

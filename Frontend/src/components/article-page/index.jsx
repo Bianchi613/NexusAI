@@ -1,8 +1,76 @@
+import { useEffect, useState } from 'react'
+import NotFoundPage from '../../pages/not-found/index.jsx'
+import { ApiError, fetchArticlePage } from '../../services/portal-api'
 import './article-page.css'
 
-function ArticlePage({ article, relatedArticles, onChangePage, onOpenArticle }) {
-  if (!article) {
-    return null
+function ArticlePage({ articleSlug, onChangePage, onOpenArticle }) {
+  const [article, setArticle] = useState(null)
+  const [status, setStatus] = useState('loading')
+  const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    let isActive = true
+
+    setStatus('loading')
+    setErrorMessage('')
+
+    const loadArticle = async () => {
+      try {
+        const data = await fetchArticlePage(articleSlug)
+        if (!isActive) {
+          return
+        }
+        setArticle(data)
+        setStatus('success')
+      } catch (error) {
+        if (!isActive) {
+          return
+        }
+        setStatus('error')
+        setErrorMessage(
+          error instanceof ApiError
+            ? error.message
+            : 'Nao foi possivel carregar a materia.',
+        )
+      }
+    }
+
+    loadArticle()
+
+    return () => {
+      isActive = false
+    }
+  }, [articleSlug])
+
+  if (status === 'loading') {
+    return (
+      <section className="editorial-placeholder">
+        <p className="story-kicker">Carregando materia</p>
+        <h1>Buscando o conteudo dinamico dessa pagina.</h1>
+        <p>O corpo da materia sera renderizado assim que o backend devolver o artigo publicado.</p>
+      </section>
+    )
+  }
+
+  if (status === 'error') {
+    if (errorMessage.toLowerCase().includes('nao encontrado')) {
+      return (
+        <NotFoundPage
+          onChangePage={onChangePage}
+          kicker="Materia indisponivel"
+          title="Essa materia nao existe mais."
+          description="O link pode estar quebrado, o slug pode ser invalido ou a materia ainda nao foi publicada no portal."
+        />
+      )
+    }
+
+    return (
+      <section className="editorial-placeholder">
+        <p className="story-kicker">Materia indisponivel</p>
+        <h1>Nao foi possivel carregar essa leitura.</h1>
+        <p>{errorMessage}</p>
+      </section>
+    )
   }
 
   return (
@@ -59,7 +127,7 @@ function ArticlePage({ article, relatedArticles, onChangePage, onOpenArticle }) 
           <section className="article-page__rail-section">
             <p className="article-page__label">Mais da editoria</p>
             <div className="article-page__related">
-              {relatedArticles.map((item) => (
+              {article.relatedArticles.map((item) => (
                 <button
                   className="article-page__related-card"
                   key={item.slug}

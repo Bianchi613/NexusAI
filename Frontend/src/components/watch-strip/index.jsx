@@ -1,6 +1,6 @@
 import './watch-strip.css'
 
-function WatchStrip({ onNext, onPrevious, stories }) {
+function WatchStrip({ onNext, onPrevious, onOpenArticle, stories }) {
   return (
     <section className="watch-strip">
       <div className="watch-head">
@@ -17,14 +17,23 @@ function WatchStrip({ onNext, onPrevious, stories }) {
 
       <div className="watch-track">
         {stories.map((story) => (
-          <article className="watch-card" key={story.title}>
+          <button
+            className="watch-card"
+            key={story.slug ?? story.title}
+            type="button"
+            onClick={() => {
+              if (story.slug && onOpenArticle) {
+                onOpenArticle(story.slug)
+              }
+            }}
+          >
             <div className="watch-thumb">
               <span className="watch-tag">{story.tag}</span>
               <span className="watch-stamp">Nexus AI</span>
             </div>
             <h3>{story.title}</h3>
             <p>{story.summary}</p>
-          </article>
+          </button>
         ))}
       </div>
     </section>

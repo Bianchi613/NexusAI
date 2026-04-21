@@ -1,6 +1,45 @@
+import { useState } from 'react'
 import '../../styles/account-pages.css'
+import { ApiError } from '../../services/portal-api'
+import { fetchCurrentUser, loginWithPassword } from '../../services/auth-api'
 
-function LoginPage({ onChangePage }) {
+function LoginPage({ onAuthChange, onChangePage }) {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  })
+  const [status, setStatus] = useState('idle')
+  const [message, setMessage] = useState('')
+
+  const handleChange = (field) => (event) => {
+    setFormData((current) => ({
+      ...current,
+      [field]: event.target.value,
+    }))
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setStatus('loading')
+    setMessage('')
+
+    try {
+      await loginWithPassword(formData)
+      const user = await fetchCurrentUser()
+      onAuthChange(user)
+      setStatus('success')
+      setMessage('Login realizado com sucesso.')
+      onChangePage('home')
+    } catch (error) {
+      setStatus('error')
+      setMessage(
+        error instanceof ApiError
+          ? error.message
+          : 'Nao foi possivel fazer login agora.',
+      )
+    }
+  }
+
   return (
     <section className="account-page">
       <div className="page-lead">
@@ -13,18 +52,35 @@ function LoginPage({ onChangePage }) {
       </div>
 
       <div className="account-grid">
-        <form className="account-card" onSubmit={(event) => event.preventDefault()}>
+        <form className="account-card" onSubmit={handleSubmit}>
           <h2>Acessar conta</h2>
           <label>
             E-mail
-            <input type="email" placeholder="voce@nexus.ai" />
+            <input
+              type="email"
+              placeholder="voce@nexus.ai"
+              value={formData.email}
+              onChange={handleChange('email')}
+              required
+            />
           </label>
           <label>
             Senha
-            <input type="password" placeholder="Sua senha" />
+            <input
+              type="password"
+              placeholder="Sua senha"
+              value={formData.password}
+              onChange={handleChange('password')}
+              required
+            />
           </label>
+          {message ? (
+            <p className={status === 'error' ? 'account-message is-error' : 'account-message is-success'}>
+              {message}
+            </p>
+          ) : null}
           <button className="submit-button" type="submit">
-            Entrar
+            {status === 'loading' ? 'Entrando...' : 'Entrar'}
           </button>
           <button className="ghost-button" type="button">
             Esqueci minha senha

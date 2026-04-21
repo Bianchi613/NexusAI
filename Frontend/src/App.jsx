@@ -4,9 +4,7 @@ import ArticlePage from './components/article-page/index.jsx'
 import Footer from './components/footer/index.jsx'
 import Header from './components/header/index.jsx'
 import Sidebar from './components/sidebar/index.jsx'
-import WatchStrip from './components/watch-strip/index.jsx'
-import { getArticleBySlug, getRelatedArticles } from './data/contentData'
-import { latestStories, watchStories } from './data/portalData'
+import { clearAccessToken, fetchCurrentUser, getStoredAccessToken } from './services/auth-api'
 import CienciaPage from './pages/ciencia/index.jsx'
 import ClimaPage from './pages/clima/index.jsx'
 import CulturaPage from './pages/cultura/index.jsx'
@@ -55,13 +53,11 @@ function getRouteFromHash() {
 
   if (normalizedHash.startsWith('materia/')) {
     const articleSlug = normalizedHash.slice('materia/'.length)
-    const article = getArticleBySlug(articleSlug)
-
-    if (!article) {
+    if (!articleSlug) {
       return { page: 'not-found', activeNav: '', articleSlug: null }
     }
 
-    return { page: 'article', activeNav: article.page, articleSlug }
+    return { page: 'article', activeNav: '', articleSlug }
   }
 
   if (pageIds.has(normalizedHash)) {
@@ -71,16 +67,10 @@ function getRouteFromHash() {
   return { page: 'not-found', activeNav: '', articleSlug: null }
 }
 
-function getCarouselSlice(items, start, count) {
-  return Array.from({ length: count }, (_, index) => {
-    return items[(start + index) % items.length]
-  })
-}
-
 function App() {
   const [route, setRoute] = useState(() => getRouteFromHash())
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [carouselStart, setCarouselStart] = useState(0)
+  const [currentUser, setCurrentUser] = useState(null)
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -94,7 +84,32 @@ function App() {
     }
   }, [])
 
-  const visibleWatchStories = getCarouselSlice(watchStories, carouselStart, 4)
+  useEffect(() => {
+    let isActive = true
+
+    const loadSession = async () => {
+      if (!getStoredAccessToken()) {
+        return
+      }
+
+      try {
+        const user = await fetchCurrentUser()
+        if (isActive) {
+          setCurrentUser(user)
+        }
+      } catch {
+        if (isActive) {
+          setCurrentUser(null)
+        }
+      }
+    }
+
+    loadSession()
+
+    return () => {
+      isActive = false
+    }
+  }, [])
 
   const changePage = (page) => {
     setIsSidebarOpen(false)
@@ -111,11 +126,10 @@ function App() {
     setIsSidebarOpen(false)
 
     if (typeof window === 'undefined') {
-      const article = getArticleBySlug(slug)
       setRoute({
-        page: article ? 'article' : 'not-found',
-        activeNav: article?.page ?? '',
-        articleSlug: article?.slug ?? null,
+        page: slug ? 'article' : 'not-found',
+        activeNav: '',
+        articleSlug: slug ?? null,
       })
       return
     }
@@ -123,78 +137,43 @@ function App() {
     window.location.hash = `materia/${slug}`
   }
 
-  const showPreviousWatch = () => {
-    setCarouselStart((current) => {
-      return (current - 1 + watchStories.length) % watchStories.length
-    })
+  const handleAuthChange = (user) => {
+    setCurrentUser(user ?? null)
   }
 
-  const showNextWatch = () => {
-    setCarouselStart((current) => {
-      return (current + 1) % watchStories.length
-    })
+  const handleLogout = () => {
+    clearAccessToken()
+    setCurrentUser(null)
+    changePage('home')
   }
-
-  const currentArticle = route.articleSlug ? getArticleBySlug(route.articleSlug) : null
 
   const renderPage = () => {
     if (route.page === 'home') {
-      return (
-        <>
-          <HomePage activeSection="Inicio" onChangePage={changePage} />
-
-          <section className="news-grid-section">
-            <div className="section-bar">
-              <div>
-                <p className="story-kicker">Pulso do portal</p>
-                <h2>Ultimas do Nexus IA</h2>
-              </div>
-              <p>Blocos prontos para noticias reais, reviews, especiais e coberturas ao vivo.</p>
-            </div>
-
-            <div className="news-grid">
-              {latestStories.map((story) => (
-                <article className="news-card" key={story.headline}>
-                  <p className="story-kicker">{story.category}</p>
-                  <h3>{story.headline}</h3>
-                  <p>{story.excerpt}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <WatchStrip
-            stories={visibleWatchStories}
-            onNext={showNextWatch}
-            onPrevious={showPreviousWatch}
-          />
-        </>
-      )
+      return <HomePage activeSection="Inicio" onChangePage={changePage} onOpenArticle={openArticle} />
     }
 
-    if (route.page === 'article' && currentArticle) {
+    if (route.page === 'article' && route.articleSlug) {
       return (
         <ArticlePage
-          article={currentArticle}
-          relatedArticles={getRelatedArticles(currentArticle)}
+          articleSlug={route.articleSlug}
           onChangePage={changePage}
           onOpenArticle={openArticle}
         />
       )
     }
 
-    if (route.page === 'register') return <RegisterPage onChangePage={changePage} />
-    if (route.page === 'login') return <LoginPage onChangePage={changePage} />
+    if (route.page === 'register') return <RegisterPage onAuthChange={handleAuthChange} onChangePage={changePage} />
+    if (route.page === 'login') return <LoginPage onAuthChange={handleAuthChange} onChangePage={changePage} />
     if (route.page === 'not-found') return <NotFoundPage onChangePage={changePage} />
-    if (route.page === 'noticias') return <NoticiasPage onOpenArticle={openArticle} />
-    if (route.page === 'negocios') return <NegociosPage onOpenArticle={openArticle} />
-    if (route.page === 'tecnologia') return <TecnologiaPage onOpenArticle={openArticle} />
-    if (route.page === 'saude') return <SaudePage onOpenArticle={openArticle} />
-    if (route.page === 'clima') return <ClimaPage onOpenArticle={openArticle} />
-    if (route.page === 'cultura') return <CulturaPage onOpenArticle={openArticle} />
-    if (route.page === 'politica') return <PoliticaPage onOpenArticle={openArticle} />
-    if (route.page === 'ciencia') return <CienciaPage onOpenArticle={openArticle} />
-    if (route.page === 'videos') return <VideosPage onOpenArticle={openArticle} />
+    if (route.page === 'noticias') return <NoticiasPage onChangePage={changePage} onOpenArticle={openArticle} />
+    if (route.page === 'negocios') return <NegociosPage onChangePage={changePage} onOpenArticle={openArticle} />
+    if (route.page === 'tecnologia') return <TecnologiaPage onChangePage={changePage} onOpenArticle={openArticle} />
+    if (route.page === 'saude') return <SaudePage onChangePage={changePage} onOpenArticle={openArticle} />
+    if (route.page === 'clima') return <ClimaPage onChangePage={changePage} onOpenArticle={openArticle} />
+    if (route.page === 'cultura') return <CulturaPage onChangePage={changePage} onOpenArticle={openArticle} />
+    if (route.page === 'politica') return <PoliticaPage onChangePage={changePage} onOpenArticle={openArticle} />
+    if (route.page === 'ciencia') return <CienciaPage onChangePage={changePage} onOpenArticle={openArticle} />
+    if (route.page === 'videos') return <VideosPage onChangePage={changePage} onOpenArticle={openArticle} />
 
     return <NotFoundPage onChangePage={changePage} />
   }
@@ -210,7 +189,9 @@ function App() {
 
       <Header
         activePage={route.activeNav}
+        currentUser={currentUser}
         onChangePage={changePage}
+        onLogout={handleLogout}
         onOpenMenu={() => setIsSidebarOpen(true)}
       />
 

@@ -1,5 +1,5 @@
 import EditorialPage from '../../components/editorial-page/index.jsx'
 
-export default function TecnologiaPage({ onOpenArticle }) {
-  return <EditorialPage page="tecnologia" onOpenArticle={onOpenArticle} />
+export default function TecnologiaPage({ onChangePage, onOpenArticle }) {
+  return <EditorialPage page="tecnologia" onChangePage={onChangePage} onOpenArticle={onOpenArticle} />
 }
