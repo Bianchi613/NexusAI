@@ -23,11 +23,11 @@ function EditorialPage({ page, onChangePage, onOpenArticle }) {
   useEffect(() => {
     let isActive = true
 
-    setCarouselStart(0)
-    setStatus('loading')
-    setErrorMessage('')
-
     const loadCategory = async () => {
+      setCarouselStart(0)
+      setStatus('loading')
+      setErrorMessage('')
+
       try {
         const data = page === 'videos'
           ? await fetchVideosPage()

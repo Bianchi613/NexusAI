@@ -45,7 +45,7 @@ class GeminiClient:
 
     def __init__(self) -> None:
         self.client = genai.Client(api_key=settings.gemini_api_key)
-        self.model = settings.gemini_model or "gemini-2.5-flash"
+        self.model = settings.gemini_model or "gemini-2.0-flash"
 
     def generate_article(self, raw_article: RawArticle, prompt_template: str) -> GeneratedArticlePayload:
         plan = self._build_generation_plan(raw_article)

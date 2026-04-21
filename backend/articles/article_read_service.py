@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import re
+import unicodedata
 from collections.abc import Iterable
 
 from app.core.article_filters import slugify, truncate_text
@@ -48,6 +49,13 @@ def _split_body_paragraphs(body: str) -> list[str]:
         return paragraphs
     cleaned_body = (body or "").strip()
     return [cleaned_body] if cleaned_body else []
+
+
+def _normalize_search_value(value: str = "") -> str:
+    """Normaliza texto para comparacao simples na busca publica."""
+    normalized = unicodedata.normalize("NFD", (value or "").lower())
+    without_accents = "".join(character for character in normalized if not unicodedata.combining(character))
+    return re.sub(r"[^a-z0-9]+", " ", without_accents).strip()
 
 
 def _resolve_tags(tag_ids: Iterable[int]) -> list[TagReadItem]:
@@ -107,6 +115,47 @@ def list_published_articles(*, limit: int, offset: int) -> ArticleReadListRespon
         items=[build_article_card(article) for article in articles[:limit]],
         limit=limit,
         offset=offset,
+        has_more=has_more,
+    )
+
+
+def search_published_articles(*, query: str, limit: int) -> ArticleReadListResponse:
+    """Realiza busca simples nas materias publicadas sem depender de alteracao de schema."""
+    normalized_query = _normalize_search_value(query)
+    if len(normalized_query) < 2:
+        return ArticleReadListResponse(items=[], limit=limit, offset=0, has_more=False)
+
+    search_window = max(120, limit * 20)
+    articles = article_repository.list_published(limit=search_window, offset=0)
+    matched_cards: list[ArticleCardResponse] = []
+
+    for article in articles:
+        card = build_article_card(article)
+        searchable_content = _normalize_search_value(
+            " ".join(
+                [
+                    card.title,
+                    card.summary or "",
+                    card.excerpt or "",
+                    card.label,
+                    card.category.name if card.category is not None else "",
+                    card.category.slug if card.category is not None else "",
+                ]
+            )
+        )
+
+        if normalized_query not in searchable_content:
+            continue
+
+        matched_cards.append(card)
+        if len(matched_cards) >= limit + 1:
+            break
+
+    has_more = len(matched_cards) > limit
+    return ArticleReadListResponse(
+        items=matched_cards[:limit],
+        limit=limit,
+        offset=0,
         has_more=has_more,
     )
 

@@ -12,10 +12,10 @@ function ArticlePage({ articleSlug, onChangePage, onOpenArticle }) {
   useEffect(() => {
     let isActive = true
 
-    setStatus('loading')
-    setErrorMessage('')
-
     const loadArticle = async () => {
+      setStatus('loading')
+      setErrorMessage('')
+
       try {
         const data = await fetchArticlePage(articleSlug)
         if (!isActive) {

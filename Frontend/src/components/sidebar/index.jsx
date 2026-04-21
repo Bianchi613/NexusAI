@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import './sidebar.css'
 import { topSections } from '../../data/portalData'
-import { ApiError, fetchPublishedArticles } from '../../services/portal-api'
+import { ApiError, searchPublishedArticles } from '../../services/portal-api'
 import { mapSectionToPage } from '../../utils/navigation'
 
 function normalizeSearchValue(value = '') {
@@ -15,35 +15,39 @@ function normalizeSearchValue(value = '') {
 
 function Sidebar({ activePage, isOpen, onClose, onChangePage, onOpenArticle }) {
   const [query, setQuery] = useState('')
-  const [articles, setArticles] = useState([])
+  const [results, setResults] = useState([])
   const [status, setStatus] = useState('idle')
   const [errorMessage, setErrorMessage] = useState('')
+
+  const normalizedQuery = normalizeSearchValue(query)
+  const hasQuery = normalizedQuery.length >= 2
 
   useEffect(() => {
     let isActive = true
 
-    if (!isOpen || articles.length > 0) {
+    if (!isOpen || !hasQuery) {
       return undefined
     }
 
-    const loadArticles = async () => {
+    const timeoutId = window.setTimeout(async () => {
       setStatus('loading')
       setErrorMessage('')
 
       try {
-        const data = await fetchPublishedArticles()
+        const data = await searchPublishedArticles(query, { limit: 6 })
 
         if (!isActive) {
           return
         }
 
-        setArticles(data.items)
+        setResults(data.items)
         setStatus('success')
       } catch (error) {
         if (!isActive) {
           return
         }
 
+        setResults([])
         setStatus('error')
         setErrorMessage(
           error instanceof ApiError
@@ -51,46 +55,38 @@ function Sidebar({ activePage, isOpen, onClose, onChangePage, onOpenArticle }) {
             : 'Não foi possível carregar as matérias para a busca.',
         )
       }
-    }
-
-    loadArticles()
+    }, 220)
 
     return () => {
       isActive = false
+      window.clearTimeout(timeoutId)
     }
-  }, [articles.length, isOpen])
+  }, [hasQuery, isOpen, query])
 
   const handleClose = () => {
     setQuery('')
+    setResults([])
+    setStatus('idle')
+    setErrorMessage('')
     onClose()
   }
 
-  const normalizedQuery = normalizeSearchValue(query)
-  const hasQuery = normalizedQuery.length >= 2
+  const handleQueryChange = (event) => {
+    const nextValue = event.target.value
+    setQuery(nextValue)
 
-  const filteredResults = hasQuery
-    ? articles
-        .filter((article) => {
-          const searchableContent = normalizeSearchValue(
-            [
-              article.title,
-              article.summary,
-              article.excerpt,
-              article.category,
-              article.label,
-            ].join(' '),
-          )
-
-          return searchableContent.includes(normalizedQuery)
-        })
-        .slice(0, 6)
-    : []
+    if (normalizeSearchValue(nextValue).length < 2) {
+      setResults([])
+      setStatus('idle')
+      setErrorMessage('')
+    }
+  }
 
   const handleSearchSubmit = (event) => {
     event.preventDefault()
 
-    if (filteredResults.length === 1 && onOpenArticle) {
-      onOpenArticle(filteredResults[0].slug)
+    if (results.length > 0 && onOpenArticle) {
+      onOpenArticle(results[0].slug)
       handleClose()
     }
   }
@@ -120,30 +116,30 @@ function Sidebar({ activePage, isOpen, onClose, onChangePage, onOpenArticle }) {
             type="text"
             value={query}
             placeholder="Busque notícias, temas e mais"
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={handleQueryChange}
           />
           <button type="submit" aria-label="Buscar" disabled={status === 'loading'}>
             <span className="sidebar-search__icon" aria-hidden="true"></span>
           </button>
         </form>
 
-        {status === 'loading' ? (
-          <p className="sidebar-search-feedback">Carregando matérias...</p>
+        {hasQuery && status === 'loading' ? (
+          <p className="sidebar-search-feedback">Buscando matérias...</p>
         ) : null}
 
-        {status === 'error' ? (
+        {hasQuery && status === 'error' ? (
           <p className="sidebar-search-feedback">{errorMessage}</p>
         ) : null}
 
-        {hasQuery && status === 'success' && filteredResults.length === 0 ? (
+        {hasQuery && status === 'success' && results.length === 0 ? (
           <p className="sidebar-search-feedback">
             Nenhuma matéria encontrada para essa busca.
           </p>
         ) : null}
 
-        {filteredResults.length > 0 ? (
+        {results.length > 0 ? (
           <div className="sidebar-search-results">
-            {filteredResults.map((article) => (
+            {results.map((article) => (
               <button
                 className="sidebar-search-result"
                 key={article.slug}

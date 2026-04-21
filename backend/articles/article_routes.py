@@ -13,6 +13,7 @@ from backend.articles.article_read_controller import (
     get_published_article_controller,
     list_published_articles_controller,
     list_related_published_articles_controller,
+    search_published_articles_controller,
 )
 from backend.articles.article_read_schema import ArticleCardResponse, ArticleReadDetailResponse, ArticleReadListResponse
 from backend.articles.article_schema import (
@@ -51,6 +52,15 @@ def list_published_articles_route(
 ) -> ArticleReadListResponse:
     """Lista artigos publicados para o frontend."""
     return list_published_articles_controller(limit=limit, offset=offset)
+
+
+@router.get("/search", response_model=ArticleReadListResponse)
+def search_published_articles_route(
+    q: str = Query(..., min_length=2),
+    limit: int = Query(default=6, ge=1, le=20),
+) -> ArticleReadListResponse:
+    """Busca artigos publicados para a barra lateral e fluxos simples de descoberta."""
+    return search_published_articles_controller(query=q, limit=limit)
 
 
 @router.get("/slug/{article_slug}/related", response_model=list[ArticleCardResponse])

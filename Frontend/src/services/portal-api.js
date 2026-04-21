@@ -169,6 +169,27 @@ export async function fetchPublishedArticles({ limit = 100, offset = 0 } = {}) {
   }
 }
 
+export async function searchPublishedArticles(query, { limit = 6 } = {}) {
+  const normalizedQuery = String(query ?? '').trim()
+  if (normalizedQuery.length < 2) {
+    return {
+      items: [],
+      hasMore: false,
+    }
+  }
+
+  const params = new URLSearchParams({
+    q: normalizedQuery,
+    limit: String(Math.max(1, Number(limit) || 1)),
+  })
+  const payload = await request(`/articles/search?${params.toString()}`)
+
+  return {
+    items: (payload.items ?? []).map(mapArticleCard),
+    hasMore: payload.has_more ?? false,
+  }
+}
+
 export async function fetchVideosPage() {
   const { items } = await fetchPublishedArticles({ limit: 150 })
   const videoArticles = items.filter((article) => article.videoUrl)

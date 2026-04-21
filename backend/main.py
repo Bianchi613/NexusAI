@@ -8,6 +8,7 @@ A execucao local deve ser feita pela CLI do FastAPI:
 """
 
 from fastapi import APIRouter, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.articles.article_routes import router as article_router
 from backend.auth.auth_routes import router as auth_router
@@ -28,6 +29,15 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
     )
+
+    if settings.cors_allowed_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=list(settings.cors_allowed_origins),
+            allow_credentials=settings.cors_allow_credentials,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     api_router = APIRouter()
     api_router.include_router(auth_router)
