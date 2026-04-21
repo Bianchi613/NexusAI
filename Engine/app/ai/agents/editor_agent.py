@@ -43,11 +43,10 @@ class EditorAgent(BaseAgent):
     ) -> str:
         return (
             f"{self.load_prompt()}\n\n"
-            f"DIRETRIZ GERAL DO PROJETO:\n{prompt_template.strip()}\n\n"
             f"TITULO ORIGINAL: {raw_article.original_title}\n"
-            f"FICHA FACTUAL:\n{self.dump_json(fact_sheet.__dict__)}\n\n"
-            f"OUTLINE EDITORIAL:\n{self.dump_json(outline.__dict__)}\n\n"
-            f"RASCUNHO DO REDATOR:\n{self.dump_json(draft.__dict__)}\n"
+            f"FICHA FACTUAL ENXUTA:\n{self.dump_json(self._compact_fact_sheet(fact_sheet))}\n\n"
+            f"OUTLINE EDITORIAL ENXUTO:\n{self.dump_json(self._compact_outline(outline))}\n\n"
+            f"RASCUNHO DO REDATOR ENXUTO:\n{self.dump_json(self._compact_draft(draft))}\n"
         )
 
     def _to_payload(
@@ -76,6 +75,37 @@ class EditorAgent(BaseAgent):
             tags=tags,
             prompt_version="agentic_ollama_v1",
         )
+
+    def _compact_fact_sheet(self, fact_sheet: FactSheet) -> dict[str, Any]:
+        """Entrega apenas os fatos mais importantes para a revisao final."""
+        return {
+            "main_event": fact_sheet.main_event,
+            "key_points": fact_sheet.key_points[:4],
+            "entities": fact_sheet.entities[:4],
+            "source_limits": fact_sheet.source_limits[:2],
+        }
+
+    def _compact_outline(self, outline: ArticleOutline) -> dict[str, Any]:
+        """Reduz o outline ao necessario para a etapa editorial final."""
+        return {
+            "angle": outline.angle,
+            "title": outline.title,
+            "summary": outline.summary,
+            "section_order": outline.section_order[:4],
+            "category": outline.category,
+            "tags": outline.tags[:5],
+        }
+
+    def _compact_draft(self, draft: DraftArticle) -> dict[str, Any]:
+        """Evita enviar um rascunho grande demais para a etapa de revisao."""
+        return {
+            "title": draft.title,
+            "summary": draft.summary,
+            "body": truncate_text(draft.body, 1800),
+            "category": draft.category,
+            "tags": draft.tags[:5],
+            "editor_notes": draft.editor_notes[:3],
+        }
 
     @staticmethod
     def _as_text(value: Any) -> str:

@@ -82,6 +82,7 @@ class Settings:
     # App
     app_name: str = os.getenv("APP_NAME", "NexusAI")
     app_env: str = os.getenv("APP_ENV", "development")
+    agentic_debug_logs: bool = _as_bool(os.getenv("AGENTIC_DEBUG_LOGS"), default=False)
 
     # Database
     database_url: str = _normalize_database_url(_require_env("DATABASE_URL"))
@@ -132,11 +133,14 @@ class Settings:
     max_articles_per_category_per_run: int = int(os.getenv("MAX_ARTICLES_PER_CATEGORY_PER_RUN", "2"))
     min_distinct_categories_per_run: int = int(os.getenv("MIN_DISTINCT_CATEGORIES_PER_RUN", "2"))
     deduplication_lookback_days: int = int(os.getenv("DEDUPLICATION_LOOKBACK_DAYS", "15"))
+    pipeline_test_mode: bool = _as_bool(os.getenv("PIPELINE_TEST_MODE"), default=False)
+    pipeline_test_max_items: int = int(os.getenv("PIPELINE_TEST_MAX_ITEMS", "1"))
+    pipeline_test_items_per_feed: int = int(os.getenv("PIPELINE_TEST_ITEMS_PER_FEED", "1"))
+    pipeline_test_sources_per_type: int = int(os.getenv("PIPELINE_TEST_SOURCES_PER_TYPE", "1"))
 
     # Filters
     min_title_length: int = int(os.getenv("MIN_TITLE_LENGTH", "20"))
     min_content_length: int = int(os.getenv("MIN_CONTENT_LENGTH", "40"))
-    min_quality_score: int = int(os.getenv("MIN_QUALITY_SCORE", "1"))
     blocked_title_terms: list[str] = field(
         default_factory=lambda: _parse_csv(
             os.getenv("BLOCKED_TITLE_TERMS"),

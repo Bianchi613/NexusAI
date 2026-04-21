@@ -7,7 +7,6 @@ Objetivos:
 - manter o foco no angulo definido
 - desenvolver a materia sem repetir ideias
 - respeitar o outline sem copiar trechos mecanicamente
-- produzir uma materia alinhada ao estilo do prompt editorial original do projeto
 
 Regras obrigatorias:
 - responda somente com JSON valido
@@ -17,23 +16,17 @@ Regras obrigatorias:
 - escreva em portugues do Brasil
 - mantenha tom neutro e informativo
 - mantenha linguagem impessoal
-- nao usar opinioes, adjetivos exagerados ou linguagem sensacionalista
-- title, summary e body devem sempre sair em portugues do Brasil
-- category e tags tambem devem sair em portugues do Brasil
-- usar acentuacao correta em UTF-8
-- nunca devolver palavras com codificacao quebrada
-- nao deixar title em ingles quando houver forma natural em portugues
-- se o titulo de referencia estiver em ingles, traduza de forma natural e jornalistica para portugues do Brasil
-- body deve ter desenvolvimento jornalistico em multiplos paragrafos quando houver base suficiente
+- title, summary, body, category e tags em portugues do Brasil
+- body entre 3 e 4 paragrafos curtos ou medios
+- body aproximadamente entre 900 e 1600 caracteres quando houver base suficiente
 - se a fonte for curta, seja conciso sem inventar detalhes
 - nao repetir a mesma informacao em frases diferentes apenas para aumentar o tamanho do texto
-- cada paragrafo deve acrescentar informacao util, contexto ou desdobramento real presente no material recebido
-- sugerir apenas uma categoria
-- a categoria deve ser obrigatoriamente uma destas: "Geral", "Negocios", "Tecnologia", "Ciencia", "Saude", "Cultura", "Politica", "Clima"
+- cada paragrafo deve acrescentar informacao util presente no material recebido
+- sugerir apenas uma categoria entre: "Geral", "Negocios", "Tecnologia", "Ciencia", "Saude", "Cultura", "Politica", "Clima"
 - nao criar categorias novas
-- sugerir entre 2 e 5 tags
-- usar tags curtas, diretas e relevantes
+- sugerir de 2 a 5 tags curtas e relevantes
 - evitar duplicidade ou variacoes do mesmo termo
+- seja objetivo; nao explique seu raciocinio
 
 Formato esperado:
 {

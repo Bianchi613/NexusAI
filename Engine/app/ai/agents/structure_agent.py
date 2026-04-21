@@ -19,10 +19,20 @@ class StructureAgent(BaseAgent):
     def _build_prompt(self, *, raw_article: RawArticle, fact_sheet: FactSheet, prompt_template: str) -> str:
         return (
             f"{self.load_prompt()}\n\n"
-            f"DIRETRIZ GERAL DO PROJETO:\n{prompt_template.strip()}\n\n"
             f"TITULO ORIGINAL: {raw_article.original_title}\n"
-            f"FICHA FACTUAL:\n{self.dump_json(fact_sheet.__dict__)}\n"
+            f"FICHA FACTUAL ENXUTA:\n{self.dump_json(self._compact_fact_sheet(fact_sheet))}\n"
         )
+
+    def _compact_fact_sheet(self, fact_sheet: FactSheet) -> dict[str, Any]:
+        """Reduz o contexto enviado ao agente mais custoso da etapa estrutural."""
+        return {
+            "main_event": fact_sheet.main_event,
+            "key_points": fact_sheet.key_points[:4],
+            "entities": fact_sheet.entities[:4],
+            "dates": fact_sheet.dates[:3],
+            "numbers": fact_sheet.numbers[:3],
+            "source_limits": fact_sheet.source_limits[:2],
+        }
 
     def _to_outline(self, payload: dict[str, Any], raw_article: RawArticle) -> ArticleOutline:
         fallback_title = raw_article.original_title.strip() or "Materia sem titulo"

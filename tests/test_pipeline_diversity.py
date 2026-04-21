@@ -1,6 +1,4 @@
 """Testes de diversidade por fonte e categoria dentro do pipeline."""
-
-import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -48,8 +46,8 @@ def test_pipeline_selection_limits_same_source_to_three_articles() -> None:
         assert sum(1 for article in selected if article.source_id == source_b.id) == 2
 
 
-def test_pipeline_limits_raw_articles_per_source_to_three_varied_items() -> None:
-    """Valida o limite de variedade por fonte ainda na etapa bruta."""
+def test_pipeline_limits_raw_articles_per_source_to_three_items() -> None:
+    """Valida o limite simples de itens por fonte ainda na etapa bruta."""
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(engine)
@@ -102,65 +100,54 @@ def test_pipeline_limits_raw_articles_per_source_to_three_varied_items() -> None
             assert len(limited) == 3
             assert [article.original_url for article in limited] == [
                 "https://rss-a.example.com/story-1",
+                "https://rss-a.example.com/story-2",
                 "https://rss-a.example.com/story-3",
-                "https://rss-a.example.com/story-4",
             ]
     finally:
         settings.max_raw_articles_per_source = original_max_raw_per_source
 
 
-def test_pipeline_generation_defers_repeated_category_until_diversity_exists(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Adia categorias repetidas para manter diversidade minima no lote."""
+def test_pipeline_generation_saves_articles_in_arrival_order(monkeypatch) -> None:
+    """Sem adiamento por categoria, o pipeline salva conforme a ordem de chegada."""
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
     Base.metadata.create_all(engine)
 
-    original_max_per_category = settings.max_articles_per_category_per_run
-    original_min_distinct = settings.min_distinct_categories_per_run
+    with SessionLocal() as session:
+        source = NewsSource(name="RSS A", base_url="https://rss-a.example.com", source_type="rss", is_active=True)
+        session.add(source)
+        session.flush()
 
-    settings.max_articles_per_category_per_run = 2
-    settings.min_distinct_categories_per_run = 2
+        stored_articles = [
+            RawArticle(
+                source_id=source.id,
+                original_title=f"Story {index} with enough content for generation",
+                original_url=f"https://rss-a.example.com/story-{index}",
+                original_description="Descricao longa o suficiente para o teste.",
+                original_content="Conteudo longo o suficiente para o teste de diversidade por categoria.",
+            )
+            for index in range(1, 4)
+        ]
+        session.add_all(stored_articles)
+        session.commit()
+        for article in stored_articles:
+            session.refresh(article)
 
-    try:
-        with SessionLocal() as session:
-            source = NewsSource(name="RSS A", base_url="https://rss-a.example.com", source_type="rss", is_active=True)
-            session.add(source)
-            session.flush()
+        payloads = [
+            GeneratedArticlePayload("Titulo 1", "Resumo 1", "Corpo 1", "Tecnologia", ["IA"]),
+            GeneratedArticlePayload("Titulo 2", "Resumo 2", "Corpo 2", "Tecnologia", ["IA"]),
+            GeneratedArticlePayload("Titulo 3", "Resumo 3", "Corpo 3", "Politica", ["Congresso"]),
+        ]
 
-            stored_articles = [
-                RawArticle(
-                    source_id=source.id,
-                    original_title=f"Story {index} with enough content for generation",
-                    original_url=f"https://rss-a.example.com/story-{index}",
-                    original_description="Descricao longa o suficiente para o teste.",
-                    original_content="Conteudo longo o suficiente para o teste de diversidade por categoria.",
-                )
-                for index in range(1, 5)
-            ]
-            session.add_all(stored_articles)
-            session.commit()
-            for article in stored_articles:
-                session.refresh(article)
+        pipeline = NewsPipeline()
 
-            payloads = [
-                GeneratedArticlePayload("Titulo 1", "Resumo 1", "Corpo 1", "Tecnologia", ["IA"]),
-                GeneratedArticlePayload("Titulo 2", "Resumo 2", "Corpo 2", "Tecnologia", ["IA"]),
-                GeneratedArticlePayload("Titulo 3", "Resumo 3", "Corpo 3", "Tecnologia", ["IA"]),
-                GeneratedArticlePayload("Titulo 4", "Resumo 4", "Corpo 4", "Politica", ["Congresso"]),
-            ]
+        def fake_generate_article(raw_article, prompt_template):
+            return payloads.pop(0)
 
-            pipeline = NewsPipeline()
+        monkeypatch.setattr(pipeline.ai_client, "generate_article", fake_generate_article)
 
-            def fake_generate_article(raw_article, prompt_template):
-                return payloads.pop(0)
+        generated = pipeline._generate_articles_for_run(session, stored_articles, "prompt", target_limit=3)
 
-            monkeypatch.setattr(pipeline.ai_client, "generate_article", fake_generate_article)
-
-            generated = pipeline._generate_articles_for_run(session, stored_articles, "prompt", target_limit=3)
-
-            assert len(generated) == 3
-            categories = [article.category.name for article in generated if article.category is not None]
-            assert categories == ["Tecnologia", "Politica", "Tecnologia"]
-    finally:
-        settings.max_articles_per_category_per_run = original_max_per_category
-        settings.min_distinct_categories_per_run = original_min_distinct
+        assert len(generated) == 3
+        categories = [article.category.name for article in generated if article.category is not None]
+        assert categories == ["Tecnologia", "Tecnologia", "Politica"]

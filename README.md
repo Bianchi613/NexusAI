@@ -139,7 +139,6 @@ DEDUPLICATION_LOOKBACK_DAYS=15
 # Filters
 MIN_TITLE_LENGTH=20
 MIN_CONTENT_LENGTH=40
-MIN_QUALITY_SCORE=1
 BLOCKED_TITLE_TERMS=webinar,sponsored,advertisement,press release
 BLOCKED_TITLE_PREFIXES=saiba como,confira,entenda como,veja como
 ALLOWED_CATEGORIES=Geral,Tecnologia,Ciencia,Espaco,Negocios,Politica,Saude,Esportes

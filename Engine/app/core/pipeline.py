@@ -12,6 +12,7 @@ Este modulo coordena o fluxo inteiro:
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import sys
 from typing import List
 
 import requests
@@ -85,6 +86,12 @@ class NewsPipeline:
             return "ollama_generate"
         return "gemini_generate"
 
+    def _safe_print(self, message: str) -> None:
+        """Evita que logs quebrem por caracteres fora do encoding do console."""
+        encoding = sys.stdout.encoding or "utf-8"
+        safe_message = message.encode(encoding, errors="backslashreplace").decode(encoding)
+        print(safe_message)
+
     def load_prompt(self) -> str:
         """Carrega o prompt textual usado pela camada de IA."""
         if not self.prompt_path.exists():
@@ -95,6 +102,8 @@ class NewsPipeline:
         """Executa uma rodada completa do pipeline."""
         prompt_template = self.load_prompt()
         target_limit = settings.pipeline_max_items_per_run
+        if settings.pipeline_test_mode:
+            target_limit = min(target_limit, max(1, settings.pipeline_test_max_items))
 
         with get_session() as session:
             collected_articles = []
@@ -295,15 +304,13 @@ class NewsPipeline:
         return unique_articles
 
     def _limit_varied_articles_per_source(self, articles: List[RawArticle]) -> List[RawArticle]:
-        """Mantem apenas uma quantidade limitada de itens variados por fonte."""
+        """Mantem apenas uma quantidade limitada de itens por fonte."""
         max_per_source = settings.max_raw_articles_per_source
         if max_per_source <= 0:
             return articles
 
         selected_articles: List[RawArticle] = []
         selected_by_source: dict[int | None, List[RawArticle]] = {}
-        seen_hashes_by_source: dict[int | None, set[str]] = {}
-        seen_titles_by_source: dict[int | None, list[str]] = {}
 
         for article in articles:
             source_key = article.source_id
@@ -311,22 +318,8 @@ class NewsPipeline:
             if len(source_articles) >= max_per_source:
                 continue
 
-            article_hash = article.content_hash or ""
-            if article_hash and article_hash in seen_hashes_by_source.setdefault(source_key, set()):
-                continue
-
-            article_title = article.original_title or ""
-            existing_titles = seen_titles_by_source.setdefault(source_key, [])
-            if article_title and any(are_titles_similar(article_title, seen_title) for seen_title in existing_titles):
-                continue
-
             source_articles.append(article)
             selected_articles.append(article)
-
-            if article_hash:
-                seen_hashes_by_source[source_key].add(article_hash)
-            if article_title:
-                existing_titles.append(article_title)
 
         return selected_articles
 
@@ -543,8 +536,6 @@ class NewsPipeline:
     ) -> List[GeneratedArticle]:
         """Gera materias finais e registra falhas sem abortar a rodada inteira."""
         generated_articles: List[GeneratedArticle] = []
-        deferred_articles: List[tuple[RawArticle, GeneratedArticlePayload]] = []
-        category_counts: Counter[str] = Counter()
         effective_limit = target_limit if target_limit > 0 else len(stored_articles)
         raw_article_ids = [article.id for article in stored_articles if article is not None]
 
@@ -557,18 +548,12 @@ class NewsPipeline:
 
             try:
                 payload = self.ai_client.generate_article(raw_article, prompt_template)
-                category_name = self._normalize_category_name(payload.category)
-                if self._should_defer_article_for_category(category_name, category_counts):
-                    deferred_articles.append((raw_article, payload))
-                    continue
-
                 generated_article = self._store_generated_article(session, raw_article, payload)
                 generated_articles.append(generated_article)
-                category_counts[category_name] += 1
             except requests.RequestException as exc:
                 session.rollback()
                 self._log_processing_failure(session, raw_article, self._get_generation_failure_stage(), exc)
-                print(
+                self._safe_print(
                     "Falha ao gerar materia para "
                     f"'{raw_article.original_title}' ({raw_article.original_url}): "
                     f"{exc.__class__.__name__}: {exc}"
@@ -576,48 +561,13 @@ class NewsPipeline:
             except Exception as exc:
                 session.rollback()
                 self._log_processing_failure(session, raw_article, "pipeline_process", exc)
-                print(
+                self._safe_print(
                     "Erro inesperado ao processar "
                     f"'{raw_article.original_title}' ({raw_article.original_url}): "
                     f"{exc.__class__.__name__}: {exc}"
                 )
 
-        for deferred_raw_article, payload in deferred_articles:
-            if len(generated_articles) >= effective_limit:
-                break
-            raw_article = session.get(RawArticle, deferred_raw_article.id)
-            if raw_article is None or self._already_generated(session, raw_article.id):
-                continue
-
-            try:
-                generated_article = self._store_generated_article(session, raw_article, payload)
-                generated_articles.append(generated_article)
-                category_counts[self._normalize_category_name(payload.category)] += 1
-            except Exception as exc:
-                session.rollback()
-                self._log_processing_failure(session, raw_article, "pipeline_store_deferred", exc)
-                print(
-                    "Erro ao salvar materia adiada para "
-                    f"'{raw_article.original_title}' ({raw_article.original_url}): "
-                    f"{exc.__class__.__name__}: {exc}"
-                )
-
         return generated_articles
-
-    def _should_defer_article_for_category(self, category_name: str, category_counts: Counter[str]) -> bool:
-        """Adia artigos quando a categoria ja dominou demais o lote."""
-        current_count = category_counts[category_name]
-        if current_count >= settings.max_articles_per_category_per_run:
-            return True
-
-        if (
-            current_count >= 1
-            and len(category_counts) < settings.min_distinct_categories_per_run
-            and settings.min_distinct_categories_per_run > 1
-        ):
-            return True
-
-        return False
 
     def _store_generated_article(
         self,

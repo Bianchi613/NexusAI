@@ -70,6 +70,8 @@ class RSSCollector:
         sources = session.scalars(
             select(NewsSource).where(NewsSource.is_active.is_(True), NewsSource.source_type == "rss")
         ).all()
+        if settings.pipeline_test_mode:
+            sources = sources[: max(1, settings.pipeline_test_sources_per_type)]
 
         raw_articles: List[RawArticle] = []
         for source in sources:
@@ -118,8 +120,12 @@ class RSSCollector:
         if not items:
             items = root.findall(".//item")
 
+        item_limit = settings.rss_page_size
+        if settings.pipeline_test_mode:
+            item_limit = min(item_limit, max(1, settings.pipeline_test_items_per_feed))
+
         collected: List[RawArticle] = []
-        for item in items[: settings.rss_page_size]:
+        for item in items[:item_limit]:
             raw_article = self._normalize_item(source.id, item)
             if raw_article is not None:
                 collected.append(raw_article)
@@ -152,7 +158,6 @@ class RSSCollector:
             blocked_prefixes=settings.blocked_title_prefixes,
             min_title_length=settings.min_title_length,
             min_content_length=settings.min_content_length,
-            min_quality_score=settings.min_quality_score,
         ):
             return None
 

@@ -40,6 +40,8 @@ class NewsAPICollector:
 
         if not sources:
             sources = [self._create_default_source(session)]
+        elif settings.pipeline_test_mode:
+            sources = sources[: max(1, settings.pipeline_test_sources_per_type)]
 
         for source in sources:
             raw_articles.extend(self._fetch_source_articles(source))
@@ -70,6 +72,8 @@ class NewsAPICollector:
 
         payload = response.json()
         articles = payload.get("articles", [])
+        if settings.pipeline_test_mode:
+            articles = articles[: max(1, settings.pipeline_test_items_per_feed)]
         collected: List[RawArticle] = []
 
         for article in articles:
@@ -127,7 +131,6 @@ class NewsAPICollector:
             blocked_prefixes=settings.blocked_title_prefixes,
             min_title_length=settings.min_title_length,
             min_content_length=settings.min_content_length,
-            min_quality_score=settings.min_quality_score,
         ):
             return None
 

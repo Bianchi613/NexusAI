@@ -553,20 +553,6 @@ def is_probable_video_url(value: Optional[str]) -> bool:
     return any(marker in lowered for marker in video_markers)
 
 
-def score_article_quality(title: Optional[str], description: Optional[str], content: Optional[str]) -> int:
-    """Atribui um score minimo com base em completude do item bruto."""
-    score = 0
-
-    if len((title or "").strip()) >= 20:
-        score += 1
-    if len((description or "").strip()) >= 40:
-        score += 1
-    if len((content or "").strip()) >= 80:
-        score += 1
-
-    return score
-
-
 def contains_blocked_term(title: Optional[str], blocked_terms: list[str]) -> bool:
     """Verifica termos que sugerem publicidade ou baixo valor editorial."""
     normalized_title = normalize_title(title)
@@ -605,7 +591,6 @@ def is_article_candidate(
     blocked_prefixes: list[str],
     min_title_length: int,
     min_content_length: int,
-    min_quality_score: int,
 ) -> bool:
     """Decide se um item bruto merece seguir no pipeline."""
     if not title or not url:
@@ -624,8 +609,6 @@ def is_article_candidate(
     if contains_blocked_term(title, blocked_terms):
         return False
     if starts_with_blocked_prefix(title, blocked_prefixes):
-        return False
-    if score_article_quality(title, description, content) < min_quality_score:
         return False
 
     return True

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import os
+import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -17,6 +19,7 @@ from typing import Optional
 
 import requests
 
+from Engine.app.config import settings
 from Engine.app.ai.ollama import GeneratedArticlePayload
 from Engine.app.models import RawArticle
 
@@ -114,8 +117,17 @@ class AgenticOllamaClient:
         self.writer_agent = WriterAgent(provider=self, prompt_path=self.prompts_dir / "writer_agent.txt")
         self.editor_agent = EditorAgent(provider=self, prompt_path=self.prompts_dir / "editor_agent.txt")
 
+    def _log(self, message: str) -> None:
+        """Emite logs simples quando o debug agentico estiver ativo."""
+        if settings.agentic_debug_logs:
+            text = f"[agentic_ollama] {message}"
+            encoding = sys.stdout.encoding or "utf-8"
+            safe_text = text.encode(encoding, errors="backslashreplace").decode(encoding)
+            print(safe_text)
+
     def generate_json(self, prompt: str) -> dict[str, Any]:
         """Executa um prompt no Ollama pedindo resposta JSON."""
+        started_at = time.perf_counter()
         response = requests.post(
             f"{self.base_url}/api/generate",
             json={
@@ -134,28 +146,64 @@ class AgenticOllamaClient:
         try:
             parsed = json.loads(raw_text)
         except json.JSONDecodeError:
+            self._log(
+                "resposta sem JSON valido "
+                f"(elapsed={time.perf_counter() - started_at:.2f}s, chars={len(raw_text)})"
+            )
             return {}
 
+        self._log(
+            "resposta recebida do Ollama "
+            f"(elapsed={time.perf_counter() - started_at:.2f}s, chars={len(raw_text)})"
+        )
         return parsed if isinstance(parsed, dict) else {}
 
     def generate_article(self, raw_article: RawArticle, prompt_template: str = "") -> GeneratedArticlePayload:
         """Executa o fluxo editorial completo com os quatro agentes."""
+        article_label = raw_article.original_title or f"raw_article_{raw_article.id}"
+        self._log(f"iniciando artigo: {article_label}")
+
+        stage_started_at = time.perf_counter()
         fact_sheet = self.facts_agent.run(raw_article=raw_article)
+        self._log(
+            "facts_agent concluido "
+            f"(elapsed={time.perf_counter() - stage_started_at:.2f}s, key_points={len(fact_sheet.key_points)})"
+        )
+
+        stage_started_at = time.perf_counter()
         outline = self.structure_agent.run(
             raw_article=raw_article,
             fact_sheet=fact_sheet,
             prompt_template=prompt_template,
         )
+        self._log(
+            "structure_agent concluido "
+            f"(elapsed={time.perf_counter() - stage_started_at:.2f}s, sections={len(outline.section_order)})"
+        )
+
+        stage_started_at = time.perf_counter()
         draft = self.writer_agent.run(
             raw_article=raw_article,
             fact_sheet=fact_sheet,
             outline=outline,
             prompt_template=prompt_template,
         )
-        return self.editor_agent.run(
+        self._log(
+            "writer_agent concluido "
+            f"(elapsed={time.perf_counter() - stage_started_at:.2f}s, body_chars={len(draft.body)})"
+        )
+
+        stage_started_at = time.perf_counter()
+        final_payload = self.editor_agent.run(
             raw_article=raw_article,
             fact_sheet=fact_sheet,
             outline=outline,
             draft=draft,
             prompt_template=prompt_template,
         )
+        self._log(
+            "editor_agent concluido "
+            f"(elapsed={time.perf_counter() - stage_started_at:.2f}s, final_chars={len(final_payload.body)})"
+        )
+        self._log(f"artigo finalizado: {article_label}")
+        return final_payload
