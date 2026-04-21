@@ -31,7 +31,6 @@ Regras obrigatorias:
 
 Categoria:
 - sugerir apenas uma categoria
-- deve ser curta, com uma palavra ou termo simples
 - a categoria deve ser obrigatoriamente uma destas: "Geral", "Negocios", "Tecnologia", "Ciencia", "Saude", "Cultura", "Politica", "Clima"
 - nao criar categorias novas
 - escolher a categoria mais especifica e adequada com base no tema central da materia
