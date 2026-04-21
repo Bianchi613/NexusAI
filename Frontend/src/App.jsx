@@ -18,6 +18,7 @@ import NotFoundPage from './pages/not-found/index.jsx'
 import PoliticaPage from './pages/politica/index.jsx'
 import PrivacyPolicyPage from './pages/privacy-policy/index.jsx'
 import RegisterPage from './pages/register/index.jsx'
+import ReviewPage from './pages/review/index.jsx'
 import SaudePage from './pages/saude/index.jsx'
 import TecnologiaPage from './pages/tecnologia/index.jsx'
 import TermsOfUsePage from './pages/terms-of-use/index.jsx'
@@ -39,6 +40,7 @@ const pageIds = new Set([
   'politica',
   'ciencia',
   'privacy-policy',
+  'review',
   'terms-of-use',
   'videos',
 ])
@@ -59,6 +61,7 @@ const pageAliases = {
   'politica-de-privacidade': 'privacy-policy',
   'privacy-policy': 'privacy-policy',
   register: 'register',
+  review: 'review',
   saude: 'saude',
   'sobre-o-nexus-ia': 'about',
   tecnologia: 'tecnologia',
@@ -235,6 +238,7 @@ function App() {
     if (route.page === 'not-found') return <NotFoundPage onChangePage={changePage} />
     if (route.page === 'terms-of-use') return <TermsOfUsePage onChangePage={changePage} />
     if (route.page === 'privacy-policy') return <PrivacyPolicyPage onChangePage={changePage} />
+    if (route.page === 'review') return <ReviewPage currentUser={currentUser} onChangePage={changePage} />
     if (route.page === 'contato') return <ContactPage onChangePage={changePage} />
     if (route.page === 'about') return <AboutPage onChangePage={changePage} />
     if (route.page === 'noticias') return <NoticiasPage onChangePage={changePage} onOpenArticle={openArticle} />

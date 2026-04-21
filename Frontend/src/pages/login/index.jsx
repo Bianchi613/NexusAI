@@ -29,7 +29,7 @@ function LoginPage({ onAuthChange, onChangePage }) {
       onAuthChange(user)
       setStatus('success')
       setMessage('Login realizado com sucesso.')
-      onChangePage('home')
+      onChangePage(user?.role === 'revisor' ? 'review' : 'home')
     } catch (error) {
       setStatus('error')
       setMessage(

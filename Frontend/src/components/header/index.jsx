@@ -76,6 +76,15 @@ function Header({ activePage, currentUser, onChangePage, onLogout, onOpenMenu })
                 <strong>{currentUser.email}</strong>
                 <span>{currentUser.role}</span>
               </div>
+              {currentUser.role === 'revisor' ? (
+                <button
+                  className="action-button action-button-solid"
+                  type="button"
+                  onClick={() => onChangePage('review')}
+                >
+                  Revisao
+                </button>
+              ) : null}
               <button className="action-button" type="button" onClick={onLogout}>
                 Sair
               </button>

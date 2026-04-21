@@ -24,6 +24,7 @@ const pageTitles = {
   politica: 'Politica',
   ciencia: 'Ciencia',
   videos: 'Videos',
+  review: 'Revisao',
   login: 'Entrar',
   register: 'Cadastro',
   'terms-of-use': 'Termos de uso',

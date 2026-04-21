@@ -34,7 +34,7 @@ function RegisterPage({ onAuthChange, onChangePage }) {
       onAuthChange(user)
       setStatus('success')
       setMessage('Conta criada com sucesso.')
-      onChangePage('home')
+      onChangePage(user?.role === 'revisor' ? 'review' : 'home')
     } catch (error) {
       setStatus('error')
       setMessage(
