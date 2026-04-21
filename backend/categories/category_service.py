@@ -1,6 +1,6 @@
 """Servico de categorias."""
 
-from app.core.article_filters import normalize_label, slugify
+from Engine.app.core.article_filters import normalize_label, slugify
 from backend.categories.category_repository import CategoryRepository
 from backend.categories.category_schema import CategoryCreateRequest, CategoryResponse, CategoryUpdateRequest
 

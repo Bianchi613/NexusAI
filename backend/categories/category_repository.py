@@ -1,7 +1,7 @@
 """Repositorio de categorias editoriais."""
 
-from app.db import get_session
-from app.models import Category, GeneratedArticle
+from Engine.app.db import get_session
+from Engine.app.models import Category, GeneratedArticle
 from sqlalchemy import select
 
 

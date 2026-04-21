@@ -20,14 +20,14 @@ O projeto faz isto:
 
 Nesta branch, o projeto possui:
 
-- pipeline principal em `app/`, funcional e testado
+- pipeline principal em `Engine/app/`, funcional e testado
 - backend do portal em `backend/`, com Swagger e estrutura modular
 
 Status do backend do portal nesta etapa:
 
 - CRUD de `users`, `articles`, `categories` e `tags` ja exposto
 - modulos `auth`, `users`, `articles`, `categories`, `tags`, `review` e `config` ja separados
-- integracao com `app.db` e `app.models` reaproveitada
+- integracao com `Engine.app.db` e `Engine.app.models` reaproveitada
 - autenticacao basica com JWT ja exposta em `auth`
 - rotas de leitura para o frontend ja separadas das rotas administrativas
 - home agregada do portal ja exposta por `GET /api/v1/home`
@@ -167,13 +167,13 @@ alembic upgrade head
 Windows PowerShell:
 
 ```powershell
-python -m app.main
+python -m Engine.app.main
 ```
 
 Linux/macOS:
 
 ```bash
-python -m app.main
+python -m Engine.app.main
 ```
 
 ### 6. Rode o backend do portal
@@ -214,7 +214,7 @@ Resumo curto:
 - `ollama serve` sobe o servidor do Ollama
 - `ollama run llama3` carrega o modelo
 - `alembic upgrade head` prepara o banco
-- `python -m app.main` roda uma execucao do pipeline
+- `python -m Engine.app.main` roda uma execucao do pipeline
 - `fastapi dev` sobe a API do portal em modo de desenvolvimento
 
 ## O Que Ja Funciona
@@ -275,20 +275,23 @@ Regra importante:
 ## Estrutura Do Projeto
 
 ```text
-app/
-  main.py
-  config.py
-  db.py
-  models.py
-  ai/
-    ollama.py
-  collectors/
-    news_api.py
-    rss.py
-    json_feed.py
-  core/
-    article_filters.py
-    pipeline.py
+Engine/
+  app/
+    main.py
+    config.py
+    db.py
+    models.py
+    ai/
+      ollama.py
+    collectors/
+      news_api.py
+      rss.py
+      json_feed.py
+    core/
+      article_filters.py
+      pipeline.py
+  prompts/
+    article.txt
 backend/
   main.py
   auth/
@@ -304,8 +307,6 @@ migrations/
     20260418_0001_initial_schema.py
 scripts/
   migrations.py
-prompts/
-  article.txt
 docs/
   EstruturaBasica.png
   BancoDeDados.png
@@ -322,13 +323,13 @@ tests/
 
 ### Aplicacao
 
-- `app/main.py`
+- `Engine/app/main.py`
   Entrada principal. Dispara uma rodada do pipeline.
-- `app/config.py`
+- `Engine/app/config.py`
   Le e valida o `.env`.
-- `app/db.py`
+- `Engine/app/db.py`
   Configura engine e sessoes do SQLAlchemy.
-- `app/models.py`
+- `Engine/app/models.py`
   Define as tabelas e relacoes ORM.
 
 ### Backend Do Portal
@@ -355,23 +356,23 @@ tests/
 
 ### Coletores
 
-- `app/collectors/rss.py`
+- `Engine/app/collectors/rss.py`
   Coleta noticias de RSS/XML.
-- `app/collectors/json_feed.py`
+- `Engine/app/collectors/json_feed.py`
   Coleta noticias de JSON Feed.
-- `app/collectors/news_api.py`
+- `Engine/app/collectors/news_api.py`
   Coleta noticias de API HTTP.
 
 ### IA
 
-- `app/ai/ollama.py`
+- `Engine/app/ai/ollama.py`
   Monta o prompt, chama o Ollama e normaliza a resposta.
 
 ### Nucleo
 
-- `app/core/article_filters.py`
+- `Engine/app/core/article_filters.py`
   Limpeza, normalizacao, extracao de midias e heuristicas simples.
-- `app/core/pipeline.py`
+- `Engine/app/core/pipeline.py`
   Orquestra coleta, deduplicacao, selecao, geracao e persistencia.
 
 ### Banco e migrations
@@ -405,7 +406,7 @@ Tabelas principais:
 O `.env` e a fonte oficial das configuracoes de execucao.
 
 - ele guarda banco, IA, fontes, pipeline e filtros
-- `app/config.py` le e converte esses valores
+- `Engine/app/config.py` le e converte esses valores
 - os coletores usam apenas o que a configuracao ja carregou
 
 O bloco de exemplo acima ja pode ser copiado para criar o arquivo local.
@@ -475,18 +476,18 @@ Para rodar o pipeline:
 Windows PowerShell:
 
 ```powershell
-python -m app.main
+python -m Engine.app.main
 ```
 
 Linux/macOS:
 
 ```bash
-python -m app.main
+python -m Engine.app.main
 ```
 
 Importante:
 
-- `app.main` nao cria schema manualmente
+- `Engine.app.main` nao cria schema manualmente
 - o banco deve estar alinhado via Alembic
 - em banco novo, rode antes `alembic upgrade head`
 
@@ -507,7 +508,7 @@ fastapi dev
 Importante:
 
 - a API do portal usa o mesmo banco do projeto
-- nesta etapa ela compartilha `app.db` e `app.models`
+- nesta etapa ela compartilha `Engine.app.db` e `Engine.app.models`
 - o Swagger fica disponivel em `/docs`
 - o `entrypoint` da CLI FastAPI esta configurado em `pyproject.toml`
 - execute o comando a partir da raiz do projeto

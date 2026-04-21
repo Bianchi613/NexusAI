@@ -1,6 +1,6 @@
 """Configuracao editorial compartilhada pelas APIs do frontend."""
 
-from app.core.article_filters import slugify
+from Engine.app.core.article_filters import slugify
 from backend.categories.category_read_base import CategoryReadSummary
 from backend.categories.category_read_schema import CategoryReadResponse
 

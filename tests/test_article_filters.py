@@ -1,6 +1,6 @@
 """Testes focados nas funcoes utilitarias de limpeza e extracao de midia."""
 
-from app.core.article_filters import (
+from Engine.app.core.article_filters import (
     build_fallback_tags,
     collect_image_urls,
     collect_video_urls,

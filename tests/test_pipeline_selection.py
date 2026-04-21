@@ -5,11 +5,11 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.config import settings
-import app.core.pipeline as pipeline_module
-from app.ai.ollama import GeneratedArticlePayload, OllamaClient
-from app.core.pipeline import NewsPipeline
-from app.models import Base, GeneratedArticle, NewsSource, RawArticle
+from Engine.app.config import settings
+import Engine.app.core.pipeline as pipeline_module
+from Engine.app.ai.ollama import GeneratedArticlePayload, OllamaClient
+from Engine.app.core.pipeline import NewsPipeline
+from Engine.app.models import Base, GeneratedArticle, NewsSource, RawArticle
 
 
 def test_pipeline_selection_balances_source_types_before_repeating() -> None:

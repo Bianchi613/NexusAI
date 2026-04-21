@@ -4,8 +4,8 @@ import json
 
 from google import genai
 
-from app.config import settings
-from app.core.article_filters import (
+from Engine.app.config import settings
+from Engine.app.core.article_filters import (
     build_source_body,
     build_source_summary,
     is_probably_english_text,
@@ -16,7 +16,7 @@ from app.core.article_filters import (
     sanitize_article_text,
     truncate_text,
 )
-from app.models import RawArticle
+from Engine.app.models import RawArticle
 
 
 @dataclass

@@ -12,7 +12,7 @@ import backend.auth.auth_service as auth_service_module
 import backend.auth.security as security_module
 from backend.auth.security import create_access_token
 from backend.main import app
-from app.models import Base
+from Engine.app.models import Base
 
 
 def _configure_in_memory_auth_db(monkeypatch):

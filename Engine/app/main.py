@@ -9,15 +9,15 @@ Este modulo existe para manter a execucao do pipeline previsivel:
 from pathlib import Path
 import sys
 
-# Permite executar `python app/main.py` ou o botao "Executar Arquivo do Python"
-# do VS Code sem quebrar os imports absolutos do pacote `app`.
+# Permite executar `python Engine/app/main.py` ou o botao "Executar Arquivo do
+# Python" do VS Code sem quebrar os imports absolutos do pacote `Engine.app`.
 if __package__ in {None, ""}:
-    project_root = Path(__file__).resolve().parent.parent
+    project_root = Path(__file__).resolve().parents[2]
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
 
-from app.db import init_db
-from app.core.pipeline import NewsPipeline
+from Engine.app.db import init_db
+from Engine.app.core.pipeline import NewsPipeline
 
 
 def main() -> None:

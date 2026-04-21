@@ -7,7 +7,7 @@ import re
 import unicodedata
 from collections.abc import Iterable
 
-from app.core.article_filters import slugify, truncate_text
+from Engine.app.core.article_filters import slugify, truncate_text
 from backend.articles.article_read_schema import (
     ArticleCardResponse,
     ArticleReadDetailResponse,

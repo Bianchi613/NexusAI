@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.config import settings
-from app.core.pipeline import NewsPipeline
-from app.models import Base, NewsSource, RawArticle
+from Engine.app.config import settings
+from Engine.app.core.pipeline import NewsPipeline
+from Engine.app.models import Base, NewsSource, RawArticle
 
 
 def test_persist_raw_article_blocks_same_url_globally() -> None:

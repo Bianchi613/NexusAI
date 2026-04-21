@@ -1,6 +1,6 @@
 """Testes do coletor JSON Feed com foco em midias e normalizacao."""
 
-from app.collectors.json_feed import JSONFeedCollector
+from Engine.app.collectors.json_feed import JSONFeedCollector
 
 
 def test_json_feed_normalize_item_collects_media_without_external_url_as_video() -> None:

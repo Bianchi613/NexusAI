@@ -14,8 +14,8 @@ import requests
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import settings
-from app.core.article_filters import (
+from Engine.app.config import settings
+from Engine.app.core.article_filters import (
     build_content_hash,
     collect_image_urls,
     collect_video_urls,
@@ -25,7 +25,7 @@ from app.core.article_filters import (
     normalize_url,
     sanitize_article_text,
 )
-from app.models import NewsSource, RawArticle
+from Engine.app.models import NewsSource, RawArticle
 
 
 class JSONFeedCollector:

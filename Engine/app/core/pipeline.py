@@ -16,13 +16,13 @@ from typing import List
 
 import requests
 
-#from app.ai.ollama import GeneratedArticlePayload, OllamaClient
-from app.ai.gemini import GeneratedArticlePayload, GeminiClient
-from app.collectors.json_feed import JSONFeedCollector
-from app.collectors.news_api import NewsAPICollector
-from app.collectors.rss import RSSCollector
-from app.config import settings
-from app.core.article_filters import (
+#from Engine.app.ai.ollama import GeneratedArticlePayload, OllamaClient
+from Engine.app.ai.gemini import GeneratedArticlePayload, GeminiClient
+from Engine.app.collectors.json_feed import JSONFeedCollector
+from Engine.app.collectors.news_api import NewsAPICollector
+from Engine.app.collectors.rss import RSSCollector
+from Engine.app.config import settings
+from Engine.app.core.article_filters import (
     are_titles_similar,
     build_fallback_tags,
     guess_category_from_article,
@@ -31,8 +31,8 @@ from app.core.article_filters import (
     normalize_url,
     slugify,
 )
-from app.db import get_session
-from app.models import Category, GeneratedArticle, GeneratedArticleSource, NewsSource, ProcessingFailure, RawArticle, Tag
+from Engine.app.db import get_session
+from Engine.app.models import Category, GeneratedArticle, GeneratedArticleSource, NewsSource, ProcessingFailure, RawArticle, Tag
 from sqlalchemy import func, select
 
 
@@ -45,7 +45,7 @@ class NewsPipeline:
         self.json_feed_collector = JSONFeedCollector()
         #self.ai_client = OllamaClient()
         self.ai_client = GeminiClient()
-        self.prompt_path = Path("prompts/article.txt")
+        self.prompt_path = Path(__file__).resolve().parents[2] / "prompts" / "article.txt"
 
     def load_prompt(self) -> str:
         """Carrega o prompt textual usado pela camada de IA."""

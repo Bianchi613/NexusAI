@@ -11,7 +11,7 @@ import backend.articles.article_repository as article_repository_module
 import backend.categories.category_repository as category_repository_module
 import backend.tags.tag_repository as tag_repository_module
 from backend.main import app
-from app.models import Base, Category, GeneratedArticle, Tag, User
+from Engine.app.models import Base, Category, GeneratedArticle, Tag, User
 
 
 def _configure_in_memory_read_db(monkeypatch):

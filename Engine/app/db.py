@@ -12,7 +12,7 @@ via Alembic, por isso `init_db()` existe apenas como ponto de compatibilidade.
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.config import settings
+from Engine.app.config import settings
 
 
 engine = create_engine(

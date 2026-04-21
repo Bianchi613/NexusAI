@@ -4,10 +4,10 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.ai.ollama import GeneratedArticlePayload
-from app.config import settings
-from app.core.pipeline import NewsPipeline
-from app.models import Base, NewsSource, RawArticle
+from Engine.app.ai.ollama import GeneratedArticlePayload
+from Engine.app.config import settings
+from Engine.app.core.pipeline import NewsPipeline
+from Engine.app.models import Base, NewsSource, RawArticle
 
 
 def test_pipeline_selection_limits_same_source_to_three_articles() -> None:

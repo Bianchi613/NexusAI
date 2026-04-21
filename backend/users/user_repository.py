@@ -1,7 +1,7 @@
 """Repositorio de usuarios do portal."""
 
-from app.db import get_session
-from app.models import GeneratedArticle, User
+from Engine.app.db import get_session
+from Engine.app.models import GeneratedArticle, User
 from sqlalchemy import func, select
 
 

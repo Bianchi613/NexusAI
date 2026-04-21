@@ -1,7 +1,7 @@
 """Repositorio de autenticacao do portal."""
 
-from app.db import get_session
-from app.models import User
+from Engine.app.db import get_session
+from Engine.app.models import User
 from sqlalchemy import func, select
 
 

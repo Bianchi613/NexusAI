@@ -3,7 +3,7 @@
 import xml.etree.ElementTree as ET
 from types import SimpleNamespace
 
-from app.collectors.rss import RSSCollector
+from Engine.app.collectors.rss import RSSCollector
 
 
 def test_rss_normalize_item_separates_images_and_videos() -> None:
@@ -80,7 +80,7 @@ def test_rss_normalize_item_enriches_media_from_original_page(monkeypatch) -> No
             raise_for_status=lambda: None,
         )
 
-    monkeypatch.setattr("app.collectors.rss.requests.get", fake_get)
+    monkeypatch.setattr("Engine.app.collectors.rss.requests.get", fake_get)
 
     raw_article = collector._normalize_item(22, item)
 

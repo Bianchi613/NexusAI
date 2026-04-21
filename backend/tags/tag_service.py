@@ -1,6 +1,6 @@
 """Servico de tags."""
 
-from app.core.article_filters import normalize_label, slugify
+from Engine.app.core.article_filters import normalize_label, slugify
 from backend.tags.tag_repository import TagRepository
 from backend.tags.tag_schema import TagCreateRequest, TagResponse, TagUpdateRequest
 
