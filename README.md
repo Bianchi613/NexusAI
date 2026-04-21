@@ -22,6 +22,7 @@ Nesta branch, o projeto possui:
 
 - pipeline principal em `Engine/app/`, funcional e testado
 - backend do portal em `backend/`, com Swagger e estrutura modular
+- suporte a multiplos modos de IA no pipeline: `gemini`, `ollama` e `agentic_ollama`
 
 Status do backend do portal nesta etapa:
 
@@ -101,9 +102,12 @@ DATABASE_URL=postgresql://postgres:12345@localhost:5432/nexusai
 DATABASE_ECHO=false
 
 # AI
+AI_PROVIDER=agentic_ollama
 OLLAMA_MODEL=llama3
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_TIMEOUT_SECONDS=180
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
 
 # API
 NEWS_API_SOURCE_NAME=NewsAPI
@@ -146,6 +150,13 @@ Se quiser usar coleta por API real, preencha:
 
 ```env
 NEWS_API_KEY=sua_chave_aqui
+```
+
+Se quiser usar Gemini no lugar do Ollama:
+
+```env
+AI_PROVIDER=gemini
+GEMINI_API_KEY=sua_chave_aqui
 ```
 
 ### 4. Prepare o banco
@@ -216,6 +227,7 @@ Resumo curto:
 - `alembic upgrade head` prepara o banco
 - `python -m Engine.app.main` roda uma execucao do pipeline
 - `fastapi dev` sobe a API do portal em modo de desenvolvimento
+- `AI_PROVIDER=agentic_ollama` ativa o fluxo com 4 agentes usando Ollama
 
 ## O Que Ja Funciona
 
@@ -229,6 +241,7 @@ Resumo curto:
 - deduplicacao por `original_url`, titulo normalizado e `content_hash`
 - limite de ate `3` noticias brutas variadas por fonte por rodada
 - geracao de materia com Ollama local
+- fluxo agentico com 4 agentes sobre Ollama: fatos, estrutura, redator e supervisor/editor
 - salvamento de categoria, tags, imagens e videos
 - registro de falhas em `processing_failures`
 - testes automatizados da parte principal do fluxo
@@ -282,7 +295,14 @@ Engine/
     db.py
     models.py
     ai/
+      agentic.py
+      gemini.py
       ollama.py
+      agents/
+        facts_agent.py
+        structure_agent.py
+        writer_agent.py
+        editor_agent.py
     collectors/
       news_api.py
       rss.py
@@ -292,6 +312,11 @@ Engine/
       pipeline.py
   prompts/
     article.txt
+    agents/
+      facts_agent.txt
+      structure_agent.txt
+      writer_agent.txt
+      editor_agent.txt
 backend/
   main.py
   auth/
@@ -365,8 +390,16 @@ tests/
 
 ### IA
 
+- `Engine/app/ai/agentic.py`
+  Concentra o fluxo agentico com Ollama e coordena os quatro agentes editoriais.
+- `Engine/app/ai/gemini.py`
+  Cliente alternativo da Gemini API.
 - `Engine/app/ai/ollama.py`
-  Monta o prompt, chama o Ollama e normaliza a resposta.
+  Cliente direto do Ollama para geracao em passo unico.
+- `Engine/app/ai/agents/`
+  Agentes especializados de fatos, estrutura, redacao e supervisao editorial.
+- `Engine/prompts/agents/`
+  Prompts separados para cada agente do fluxo agentico.
 
 ### Nucleo
 
@@ -408,6 +441,8 @@ O `.env` e a fonte oficial das configuracoes de execucao.
 - ele guarda banco, IA, fontes, pipeline e filtros
 - `Engine/app/config.py` le e converte esses valores
 - os coletores usam apenas o que a configuracao ja carregou
+- `AI_PROVIDER` escolhe entre `gemini`, `ollama` e `agentic_ollama`
+- `GEMINI_API_KEY` so precisa estar preenchida quando `AI_PROVIDER=gemini`
 
 O bloco de exemplo acima ja pode ser copiado para criar o arquivo local.
 
@@ -490,6 +525,7 @@ Importante:
 - `Engine.app.main` nao cria schema manualmente
 - o banco deve estar alinhado via Alembic
 - em banco novo, rode antes `alembic upgrade head`
+- por padrao, o projeto pode ser configurado para rodar so com Ollama usando `AI_PROVIDER=agentic_ollama`
 
 Para rodar a API do portal:
 

@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from Engine.app.config import settings
 import Engine.app.core.pipeline as pipeline_module
+from Engine.app.ai.agentic import AgenticOllamaClient
 from Engine.app.ai.ollama import GeneratedArticlePayload, OllamaClient
 from Engine.app.core.pipeline import NewsPipeline
 from Engine.app.models import Base, GeneratedArticle, NewsSource, RawArticle
@@ -254,3 +255,83 @@ def test_ollama_parse_model_response_respects_adaptive_body_limit() -> None:
 
     assert len(parsed["body"]) <= plan.target_body_max + 3
     assert parsed["title"] == "Titulo final"
+
+
+def test_pipeline_uses_agentic_ollama_when_configured(monkeypatch) -> None:
+    """O pipeline deve instanciar o cliente agentico quando configurado."""
+    original_provider = settings.ai_provider
+
+    created: list[str] = []
+
+    class FakeAgenticOllamaClient:
+        def __init__(self, *args, **kwargs) -> None:
+            created.append("agentic")
+
+    monkeypatch.setattr(pipeline_module, "AgenticOllamaClient", FakeAgenticOllamaClient)
+    settings.ai_provider = "agentic_ollama"
+
+    try:
+        pipeline = NewsPipeline()
+        assert created == ["agentic"]
+        assert pipeline.ai_provider == "agentic_ollama"
+        assert isinstance(pipeline.ai_client, FakeAgenticOllamaClient)
+    finally:
+        settings.ai_provider = original_provider
+
+
+def test_pipeline_persists_ollama_model_for_agentic_client(monkeypatch) -> None:
+    """O metadado do artigo deve registrar o modelo Ollama no fluxo agentico."""
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
+    Base.metadata.create_all(engine)
+
+    original_provider = settings.ai_provider
+    original_ollama_model = settings.ollama_model
+    settings.ai_provider = "agentic_ollama"
+    settings.ollama_model = "llama3.2-agentic"
+
+    try:
+        with SessionLocal() as session:
+            source = NewsSource(name="RSS One", base_url="https://rss.example.com", source_type="rss", is_active=True)
+            raw_article = RawArticle(
+                source=source,
+                original_title="Agentes reescrevem materia com validacao editorial",
+                original_url="https://rss.example.com/story-1",
+                original_description="Descricao suficiente para gerar uma materia final.",
+                original_content="Conteudo suficiente para registrar um artigo gerado no teste.",
+            )
+            session.add_all([source, raw_article])
+            session.flush()
+
+            pipeline = NewsPipeline()
+            monkeypatch.setattr(
+                pipeline.ai_client,
+                "generate_article",
+                lambda raw_article, prompt: GeneratedArticlePayload(
+                    title="Titulo final",
+                    summary="Resumo final",
+                    body="Corpo final da materia.",
+                    category="Tecnologia",
+                    tags=["IA", "Agentes"],
+                    prompt_version="agentic_ollama_v1",
+                ),
+            )
+
+            generated_article = pipeline._store_generated_article(
+                session,
+                raw_article,
+                GeneratedArticlePayload(
+                    title="Titulo final",
+                    summary="Resumo final",
+                    body="Corpo final da materia.",
+                    category="Tecnologia",
+                    tags=["IA", "Agentes"],
+                    prompt_version="agentic_ollama_v1",
+                ),
+            )
+
+            assert generated_article.ai_model == "llama3.2-agentic"
+            assert generated_article.prompt_version == "agentic_ollama_v1"
+    finally:
+        settings.ai_provider = original_provider
+        settings.ollama_model = original_ollama_model

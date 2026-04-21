@@ -44,6 +44,8 @@ class GeminiClient:
     """Cliente da Gemini API para gerar matéria estruturada."""
 
     def __init__(self) -> None:
+        if not settings.gemini_api_key:
+            raise ValueError("GEMINI_API_KEY precisa estar definida para usar AI_PROVIDER=gemini.")
         self.client = genai.Client(api_key=settings.gemini_api_key)
         self.model = settings.gemini_model or "gemini-2.0-flash"
 

@@ -16,8 +16,9 @@ from typing import List
 
 import requests
 
-#from Engine.app.ai.ollama import GeneratedArticlePayload, OllamaClient
+from Engine.app.ai.agentic import AgenticOllamaClient
 from Engine.app.ai.gemini import GeneratedArticlePayload, GeminiClient
+from Engine.app.ai.ollama import OllamaClient
 from Engine.app.collectors.json_feed import JSONFeedCollector
 from Engine.app.collectors.news_api import NewsAPICollector
 from Engine.app.collectors.rss import RSSCollector
@@ -43,9 +44,46 @@ class NewsPipeline:
         self.api_collector = NewsAPICollector()
         self.rss_collector = RSSCollector()
         self.json_feed_collector = JSONFeedCollector()
-        #self.ai_client = OllamaClient()
-        self.ai_client = GeminiClient()
+        self.ai_provider = self._resolve_ai_provider()
+        self.ai_client = self._build_ai_client()
         self.prompt_path = Path(__file__).resolve().parents[2] / "prompts" / "article.txt"
+
+    def _resolve_ai_provider(self) -> str:
+        """Normaliza o provider configurado e aplica fallback seguro."""
+        provider = (settings.ai_provider or "gemini").strip().lower()
+        aliases = {
+            "agentic": "agentic_ollama",
+            "agentic_ollama": "agentic_ollama",
+            "gemini": "gemini",
+            "ollama": "ollama",
+        }
+        return aliases.get(provider, "gemini")
+
+    def _build_ai_client(self):
+        """Cria o cliente de IA ativo da rodada atual."""
+        if self.ai_provider == "agentic_ollama":
+            return AgenticOllamaClient(
+                model=settings.ollama_model,
+                base_url=settings.ollama_base_url,
+                timeout_seconds=settings.ollama_timeout_seconds,
+            )
+        if self.ai_provider == "ollama":
+            return OllamaClient()
+        return GeminiClient()
+
+    def _get_active_ai_model(self) -> str:
+        """Explica qual modelo deve ser salvo no artigo gerado."""
+        if self.ai_provider in {"ollama", "agentic_ollama"}:
+            return settings.ollama_model
+        return settings.gemini_model
+
+    def _get_generation_failure_stage(self) -> str:
+        """Padroniza o nome da etapa de falha conforme o provider."""
+        if self.ai_provider == "agentic_ollama":
+            return "agentic_ollama_generate"
+        if self.ai_provider == "ollama":
+            return "ollama_generate"
+        return "gemini_generate"
 
     def load_prompt(self) -> str:
         """Carrega o prompt textual usado pela camada de IA."""
@@ -529,7 +567,7 @@ class NewsPipeline:
                 category_counts[category_name] += 1
             except requests.RequestException as exc:
                 session.rollback()
-                self._log_processing_failure(session, raw_article, "Gemini_generate", exc)
+                self._log_processing_failure(session, raw_article, self._get_generation_failure_stage(), exc)
                 print(
                     "Falha ao gerar materia para "
                     f"'{raw_article.original_title}' ({raw_article.original_url}): "
@@ -599,8 +637,7 @@ class NewsPipeline:
             body=payload.body,
             category_id=category.id if category else None,
             status="nao_revisada",
-            #ai_model=settings.ollama_model,
-            ai_model=settings.gemini_model,
+            ai_model=self._get_active_ai_model(),
             prompt_version=payload.prompt_version,
             tags=tag_ids,
             image_urls=list(raw_article.original_image_urls or []),
