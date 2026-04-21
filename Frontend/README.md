@@ -231,6 +231,25 @@ As APIs que ja existem no backend para essa integracao sao:
 - `POST /api/v1/auth/login`
 - `GET /api/v1/auth/me`
 
+As APIs do painel editorial, separadas da navegacao publica do portal, ficam em `review`:
+
+- `GET /api/v1/review/articles`
+- `GET /api/v1/review/articles/pending`
+- `GET /api/v1/review/articles/{article_id}`
+- `POST /api/v1/review/articles`
+- `PUT /api/v1/review/articles/{article_id}`
+- `DELETE /api/v1/review/articles/{article_id}`
+- `PATCH /api/v1/review/articles/{article_id}/approve`
+- `PATCH /api/v1/review/articles/{article_id}/reject`
+- `GET /api/v1/review/categories`
+- `POST /api/v1/review/categories`
+- `PUT /api/v1/review/categories/{category_id}`
+- `DELETE /api/v1/review/categories/{category_id}`
+- `GET /api/v1/review/tags`
+- `POST /api/v1/review/tags`
+- `PUT /api/v1/review/tags/{tag_id}`
+- `DELETE /api/v1/review/tags/{tag_id}`
+
 Regras importantes dessa integracao:
 
 - so materias com status `publicada` devem aparecer no frontend

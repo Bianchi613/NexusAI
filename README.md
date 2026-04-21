@@ -31,7 +31,7 @@ Status do backend do portal nesta etapa:
 - autenticacao basica com JWT ja exposta em `auth`
 - rotas de leitura para o frontend ja separadas das rotas administrativas
 - home agregada do portal ja exposta por `GET /api/v1/home`
-- fluxo editorial de revisao ainda em evolucao
+- entidade `review` expandida para funcionar como painel editorial central
 
 ## Inicio Rapido
 
@@ -237,7 +237,8 @@ Resumo curto:
 - CRUD de `users`, `articles`, `categories` e `tags`
 - leitura publica do frontend com filtros por artigos `publicada`
 - rota agregada `GET /api/v1/home` para abastecer a capa do portal
-- rotas editoriais iniciais em `review` para listar pendentes, aprovar e rejeitar
+- painel editorial em `review` para listar, editar, aprovar, rejeitar e apagar artigos
+- painel editorial em `review` para gerenciar tags e categorias
 
 ## O Que Ainda Esta Em Aberto
 
@@ -345,7 +346,7 @@ tests/
 - `backend/tags/`
   Rotas e servicos de tags editoriais.
 - `backend/review/`
-  Rotas e servicos do fluxo inicial de revisao.
+  Painel editorial central para revisao e administracao de artigos, tags e categorias.
 - `backend/config/`
   Configuracao editorial compartilhada e APIs agregadas, como `GET /home`.
 - os arquivos de acesso a banco ficam dentro dos modulos de dominio
@@ -546,6 +547,7 @@ Status atual:
 - rotas de auth e de leitura do frontend testadas
 - `GET /api/v1/home` validado com apenas materias `publicada`
 - APIs de categoria e artigo por `slug` prontas para o frontend
+- painel `review` testado para operacoes de revisor em artigos, tags e categorias
 
 Rotas expostas hoje pelo backend do portal:
 
@@ -580,15 +582,36 @@ Rotas expostas hoje pelo backend do portal:
 - `POST /api/v1/tags`
 - `PUT /api/v1/tags/{tag_id}`
 - `DELETE /api/v1/tags/{tag_id}`
+- `GET /api/v1/review/articles`
 - `GET /api/v1/review/articles/pending`
+- `GET /api/v1/review/articles/{article_id}`
+- `POST /api/v1/review/articles`
+- `PUT /api/v1/review/articles/{article_id}`
+- `DELETE /api/v1/review/articles/{article_id}`
 - `PATCH /api/v1/review/articles/{article_id}/approve`
 - `PATCH /api/v1/review/articles/{article_id}/reject`
+- `GET /api/v1/review/categories`
+- `GET /api/v1/review/categories/{category_id}`
+- `POST /api/v1/review/categories`
+- `PUT /api/v1/review/categories/{category_id}`
+- `DELETE /api/v1/review/categories/{category_id}`
+- `GET /api/v1/review/tags`
+- `GET /api/v1/review/tags/{tag_id}`
+- `POST /api/v1/review/tags`
+- `PUT /api/v1/review/tags/{tag_id}`
+- `DELETE /api/v1/review/tags/{tag_id}`
 
 Regras importantes das rotas consumidas pelo frontend:
 
 - apenas materias com `generated_articles.status = "publicada"` aparecem em `home`, `categories` e `articles/published`
 - a categoria `Geral` continua no banco, mas e exposta ao frontend como `noticias`
 - o slug do artigo e virtual, derivado de `title + id`, sem alterar o schema do banco
+
+Regras importantes da area de revisao:
+
+- as rotas de `review` exigem um `reviewer_id` valido com role `revisor`
+- o revisor pode editar artigo completo, incluindo `title`, `summary`, `body`, `tags`, `category_id`, `image_urls`, `video_urls` e `status`
+- ao publicar ou rejeitar via `review`, o backend pode preencher `reviewed_by` automaticamente com o proprio revisor
 
 ## Consultas Uteis
 
