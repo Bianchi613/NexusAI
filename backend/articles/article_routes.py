@@ -9,6 +9,12 @@ from backend.articles.article_controller import (
     list_portal_articles,
     update_portal_article,
 )
+from backend.articles.article_read_controller import (
+    get_published_article_controller,
+    list_published_articles_controller,
+    list_related_published_articles_controller,
+)
+from backend.articles.article_read_schema import ArticleCardResponse, ArticleReadDetailResponse, ArticleReadListResponse
 from backend.articles.article_schema import (
     ArticleCreateRequest,
     ArticleDetailResponse,
@@ -36,6 +42,30 @@ def list_articles_route(
         category_id=category_id,
         reviewed_by=reviewed_by,
     )
+
+
+@router.get("/published", response_model=ArticleReadListResponse)
+def list_published_articles_route(
+    limit: int = Query(default=12, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
+) -> ArticleReadListResponse:
+    """Lista artigos publicados para o frontend."""
+    return list_published_articles_controller(limit=limit, offset=offset)
+
+
+@router.get("/slug/{article_slug}/related", response_model=list[ArticleCardResponse])
+def list_related_articles_route(
+    article_slug: str,
+    limit: int = Query(default=3, ge=1, le=10),
+) -> list[ArticleCardResponse]:
+    """Lista artigos relacionados a um artigo publicado."""
+    return list_related_published_articles_controller(article_slug, limit=limit)
+
+
+@router.get("/slug/{article_slug}", response_model=ArticleReadDetailResponse)
+def get_published_article_route(article_slug: str) -> ArticleReadDetailResponse:
+    """Retorna um artigo publicado pelo slug virtual."""
+    return get_published_article_controller(article_slug)
 
 
 @router.get("/{article_id}", response_model=ArticleDetailResponse)

@@ -26,9 +26,11 @@ Nesta branch, o projeto possui:
 Status do backend do portal nesta etapa:
 
 - CRUD de `users`, `articles`, `categories` e `tags` ja exposto
-- modulos `auth`, `users`, `articles`, `categories`, `tags` e `review` ja separados
+- modulos `auth`, `users`, `articles`, `categories`, `tags`, `review` e `config` ja separados
 - integracao com `app.db` e `app.models` reaproveitada
-- autenticacao real ainda nao implementada
+- autenticacao basica com JWT ja exposta em `auth`
+- rotas de leitura para o frontend ja separadas das rotas administrativas
+- home agregada do portal ja exposta por `GET /api/v1/home`
 - fluxo editorial de revisao ainda em evolucao
 
 ## Inicio Rapido
@@ -233,6 +235,8 @@ Resumo curto:
 - backend HTTP inicial do portal com FastAPI
 - Swagger do backend do portal
 - CRUD de `users`, `articles`, `categories` e `tags`
+- leitura publica do frontend com filtros por artigos `publicada`
+- rota agregada `GET /api/v1/home` para abastecer a capa do portal
 - rotas editoriais iniciais em `review` para listar pendentes, aprovar e rejeitar
 
 ## O Que Ainda Esta Em Aberto
@@ -335,15 +339,15 @@ tests/
 - `backend/users/`
   Rotas e servicos de usuarios.
 - `backend/articles/`
-  Rotas e servicos de leitura publica de materias.
+  CRUD editorial e leitura de materias para o frontend.
 - `backend/categories/`
-  Rotas e servicos de categorias editoriais.
+  CRUD editorial e leitura de categorias para o frontend.
 - `backend/tags/`
   Rotas e servicos de tags editoriais.
 - `backend/review/`
   Rotas e servicos do fluxo inicial de revisao.
 - `backend/config/`
-  Configuracao compartilhada do backend.
+  Configuracao editorial compartilhada e APIs agregadas, como `GET /home`.
 - os arquivos de acesso a banco ficam dentro dos modulos de dominio
   como `article_repository.py`, `user_repository.py`,
   `category_repository.py` e `tag_repository.py`.
@@ -539,27 +543,38 @@ python -m pytest
 
 Status atual:
 
-- `21` testes passando
+- rotas de auth e de leitura do frontend testadas
+- `GET /api/v1/home` validado com apenas materias `publicada`
+- APIs de categoria e artigo por `slug` prontas para o frontend
 
 Rotas expostas hoje pelo backend do portal:
 
 - `GET /api/v1/auth/status`
+- `GET /api/v1/auth/status/protected`
+- `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
 - `GET /api/v1/users`
 - `GET /api/v1/users/{user_id}`
 - `POST /api/v1/users`
 - `PUT /api/v1/users/{user_id}`
 - `DELETE /api/v1/users/{user_id}`
+- `GET /api/v1/home`
 - `GET /api/v1/articles`
+- `GET /api/v1/articles/published`
+- `GET /api/v1/articles/slug/{slug}`
+- `GET /api/v1/articles/slug/{slug}/related`
 - `GET /api/v1/articles/{article_id}`
 - `POST /api/v1/articles`
 - `PUT /api/v1/articles/{article_id}`
 - `DELETE /api/v1/articles/{article_id}`
 - `GET /api/v1/categories`
-- `GET /api/v1/categories/{category_id}`
+- `GET /api/v1/categories/{slug}`
+- `GET /api/v1/categories/{slug}/articles`
+- `GET /api/v1/categories/id/{category_id}`
 - `POST /api/v1/categories`
-- `PUT /api/v1/categories/{category_id}`
-- `DELETE /api/v1/categories/{category_id}`
+- `PUT /api/v1/categories/id/{category_id}`
+- `DELETE /api/v1/categories/id/{category_id}`
 - `GET /api/v1/tags`
 - `GET /api/v1/tags/{tag_id}`
 - `POST /api/v1/tags`
@@ -568,6 +583,12 @@ Rotas expostas hoje pelo backend do portal:
 - `GET /api/v1/review/articles/pending`
 - `PATCH /api/v1/review/articles/{article_id}/approve`
 - `PATCH /api/v1/review/articles/{article_id}/reject`
+
+Regras importantes das rotas consumidas pelo frontend:
+
+- apenas materias com `generated_articles.status = "publicada"` aparecem em `home`, `categories` e `articles/published`
+- a categoria `Geral` continua no banco, mas e exposta ao frontend como `noticias`
+- o slug do artigo e virtual, derivado de `title + id`, sem alterar o schema do banco
 
 ## Consultas Uteis
 

@@ -25,6 +25,16 @@ class TagRepository:
             statement = select(Tag).where(Tag.id == tag_id)
             return session.scalar(statement)
 
+    def list_by_ids(self, tag_ids: list[int]) -> list[Tag]:
+        """Lista tags a partir de ids preservando a ordem de entrada."""
+        if not tag_ids:
+            return []
+
+        with get_session() as session:
+            statement = select(Tag).where(Tag.id.in_(tag_ids))
+            tags = {tag.id: tag for tag in session.scalars(statement).all()}
+            return [tags[tag_id] for tag_id in tag_ids if tag_id in tags]
+
     def find_by_name(self, name: str) -> Tag | None:
         """Busca tag pelo nome."""
         with get_session() as session:

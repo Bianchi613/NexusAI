@@ -218,11 +218,31 @@ Tambem foi tratado o caso de rotas antigas ou removidas, como `laboratorio-ia`, 
 
 O proximo passo natural e substituir a camada mock por dados reais do backend.
 
+As APIs que ja existem no backend para essa integracao sao:
+
+- `GET /api/v1/home`
+- `GET /api/v1/categories`
+- `GET /api/v1/categories/{slug}`
+- `GET /api/v1/categories/{slug}/articles`
+- `GET /api/v1/articles/published`
+- `GET /api/v1/articles/slug/{slug}`
+- `GET /api/v1/articles/slug/{slug}/related`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
+
+Regras importantes dessa integracao:
+
+- so materias com status `publicada` devem aparecer no frontend
+- a editoria `Noticias` e um alias de apresentacao para a categoria `Geral` do banco
+- o slug da pagina de materia vem do backend e nao precisa existir como coluna no banco
+
 Para isso, basta manter o contrato atual e trocar a origem:
 
-- `getArticlesByPage(page)` passa a chamar API por categoria
-- `getArticleBySlug(slug)` passa a buscar uma materia real no banco
-- `getRelatedArticles(article)` passa a vir de relacao por tag, categoria ou recomendacao
+- a home pode passar a usar `GET /api/v1/home`
+- `getArticlesByPage(page)` passa a chamar `GET /api/v1/categories/{slug}/articles`
+- `getArticleBySlug(slug)` passa a buscar `GET /api/v1/articles/slug/{slug}`
+- `getRelatedArticles(article)` passa a usar `GET /api/v1/articles/slug/{slug}/related`
 
 Assim, o layout permanece o mesmo e apenas a fonte de dados muda.
 

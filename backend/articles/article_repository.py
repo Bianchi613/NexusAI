@@ -16,6 +16,7 @@ class ArticleRepository:
         """Opcoes comuns para listagem."""
         return (
             selectinload(GeneratedArticle.category),
+            selectinload(GeneratedArticle.reviewer),
             selectinload(GeneratedArticle.raw_article_links),
         )
 
