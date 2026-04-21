@@ -17,7 +17,9 @@ class ArticleRepository:
         return (
             selectinload(GeneratedArticle.category),
             selectinload(GeneratedArticle.reviewer),
-            selectinload(GeneratedArticle.raw_article_links),
+            selectinload(GeneratedArticle.raw_article_links)
+            .selectinload(GeneratedArticleSource.raw_article)
+            .selectinload(RawArticle.source),
         )
 
     @staticmethod
@@ -26,7 +28,9 @@ class ArticleRepository:
         return (
             selectinload(GeneratedArticle.category),
             selectinload(GeneratedArticle.reviewer),
-            selectinload(GeneratedArticle.raw_article_links),
+            selectinload(GeneratedArticle.raw_article_links)
+            .selectinload(GeneratedArticleSource.raw_article)
+            .selectinload(RawArticle.source),
         )
 
     def list_all(

@@ -12,6 +12,7 @@ from backend.articles.article_read_schema import (
     ArticleCardResponse,
     ArticleReadDetailResponse,
     ArticleReadListResponse,
+    ArticleSourceReadItem,
     TagReadItem,
 )
 from backend.articles.article_repository import ArticleRepository
@@ -81,6 +82,29 @@ def _derive_label(article, tags: list[TagReadItem]) -> str:
     if article.category is not None and getattr(article.category, "name", None):
         return build_category_summary(article.category).name
     return "Portal"
+
+
+def _resolve_source_articles(article) -> list[ArticleSourceReadItem]:
+    """Converte vinculos de fontes brutas em itens publicos para a pagina da materia."""
+    source_items: list[ArticleSourceReadItem] = []
+
+    for source_link in list(getattr(article, "raw_article_links", []) or []):
+        raw_article = getattr(source_link, "raw_article", None)
+        if raw_article is None or not getattr(raw_article, "original_url", None):
+            continue
+
+        source = getattr(raw_article, "source", None)
+        source_items.append(
+            ArticleSourceReadItem(
+                raw_article_id=raw_article.id,
+                source_name=getattr(source, "name", None),
+                original_title=raw_article.original_title,
+                original_url=raw_article.original_url,
+                original_author=raw_article.original_author,
+            )
+        )
+
+    return source_items
 
 
 def build_article_card(article) -> ArticleCardResponse:
@@ -221,6 +245,7 @@ def get_published_article(article_slug: str) -> ArticleReadDetailResponse | None
         image_urls=list(article.image_urls or []),
         video_urls=list(article.video_urls or []),
         tags=tags,
+        source_articles=_resolve_source_articles(article),
         related_articles=related_cards,
     )
 

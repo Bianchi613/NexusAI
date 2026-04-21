@@ -17,6 +17,16 @@ class TagReadItem(BaseModel):
     slug: str
 
 
+class ArticleSourceReadItem(BaseModel):
+    """Fonte original vinculada a uma materia publicada."""
+
+    raw_article_id: int
+    source_name: str | None = None
+    original_title: str
+    original_url: str
+    original_author: str | None = None
+
+
 class ArticleCardResponse(BaseModel):
     """Card resumido de artigo para listas e carrosseis."""
 
@@ -62,4 +72,5 @@ class ArticleReadDetailResponse(BaseModel):
     image_urls: list[str]
     video_urls: list[str]
     tags: list[TagReadItem]
+    source_articles: list[ArticleSourceReadItem]
     related_articles: list[ArticleCardResponse]

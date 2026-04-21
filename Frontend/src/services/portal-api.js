@@ -101,6 +101,13 @@ function mapArticleDetail(payload) {
     videoUrls,
     body: payload.body_paragraphs ?? [],
     tags: (payload.tags ?? []).map((tag) => tag.name),
+    sourceArticles: (payload.source_articles ?? []).map((sourceArticle) => ({
+      rawArticleId: sourceArticle.raw_article_id,
+      sourceName: sourceArticle.source_name ?? '',
+      originalTitle: sourceArticle.original_title,
+      originalUrl: sourceArticle.original_url,
+      originalAuthor: sourceArticle.original_author ?? '',
+    })),
     relatedArticles: (payload.related_articles ?? []).map(mapArticleCard),
   }
 }

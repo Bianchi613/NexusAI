@@ -168,6 +168,33 @@ function ArticlePage({ articleSlug, onChangePage, onOpenArticle }) {
         </div>
 
         <aside className="article-page__rail">
+          {article.sourceArticles?.length > 0 ? (
+            <section className="article-page__rail-section">
+              <p className="article-page__label">Fontes originais</p>
+              <div className="article-page__sources">
+                {article.sourceArticles.map((sourceArticle) => (
+                  <a
+                    className="article-page__source-card"
+                    href={sourceArticle.originalUrl}
+                    key={sourceArticle.rawArticleId}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <span className="story-kicker">
+                      {sourceArticle.sourceName || 'Fonte externa'}
+                    </span>
+                    <h3>{sourceArticle.originalTitle}</h3>
+                    {sourceArticle.originalAuthor ? (
+                      <p>Autor original: {sourceArticle.originalAuthor}</p>
+                    ) : (
+                      <p>Abrir materia na fonte original.</p>
+                    )}
+                  </a>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section className="article-page__rail-section">
             <p className="article-page__label">Tags</p>
             <div className="article-page__tags">
