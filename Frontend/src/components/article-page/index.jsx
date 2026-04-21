@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import NotFoundPage from '../../pages/not-found/index.jsx'
 import { ApiError, fetchArticlePage } from '../../services/portal-api'
+import { resolveVideoEmbed } from '../../utils/video-embed'
 import './article-page.css'
 
 function ArticlePage({ articleSlug, onChangePage, onOpenArticle }) {
@@ -73,6 +74,8 @@ function ArticlePage({ articleSlug, onChangePage, onOpenArticle }) {
     )
   }
 
+  const videoEmbed = article.videoUrl ? resolveVideoEmbed(article.videoUrl) : null
+
   return (
     <article className="article-page">
       <button
@@ -114,6 +117,48 @@ function ArticlePage({ articleSlug, onChangePage, onOpenArticle }) {
           </p>
         </div>
       </div>
+
+      {videoEmbed ? (
+        <section className="article-page__video">
+          <div className="article-page__video-head">
+            <p className="story-kicker">Video relacionado</p>
+            <h2>Assistir na plataforma</h2>
+          </div>
+
+          {videoEmbed.kind === 'iframe' ? (
+            <div className="article-page__video-frame">
+              <iframe
+                src={videoEmbed.embedUrl}
+                title={videoEmbed.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          ) : null}
+
+          {videoEmbed.kind === 'direct' ? (
+            <div className="article-page__video-frame">
+              <video controls preload="metadata" src={videoEmbed.embedUrl}>
+                Seu navegador nao conseguiu reproduzir este video.
+              </video>
+            </div>
+          ) : null}
+
+          {videoEmbed.kind === 'external' ? (
+            <div className="article-page__video-fallback">
+              <p>Este link de video nao aceita incorporacao direta no portal.</p>
+              <a
+                className="primary-link article-page__video-link"
+                href={videoEmbed.originalUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Abrir video
+              </a>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <div className="article-page__grid">
         <div className="article-page__body">

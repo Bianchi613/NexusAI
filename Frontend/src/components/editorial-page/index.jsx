@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import NotFoundPage from '../../pages/not-found/index.jsx'
-import { ApiError, fetchCategoryPage } from '../../services/portal-api'
+import { ApiError, fetchCategoryPage, fetchVideosPage } from '../../services/portal-api'
+import { resolveVideoEmbed } from '../../utils/video-embed'
 import './editorial-page.css'
 
 function getCarouselSlice(items, start, count) {
@@ -28,7 +29,9 @@ function EditorialPage({ page, onChangePage, onOpenArticle }) {
 
     const loadCategory = async () => {
       try {
-        const data = await fetchCategoryPage(page)
+        const data = page === 'videos'
+          ? await fetchVideosPage()
+          : await fetchCategoryPage(page)
         if (!isActive) {
           return
         }
@@ -65,7 +68,7 @@ function EditorialPage({ page, onChangePage, onOpenArticle }) {
   }
 
   if (status === 'error') {
-    if (errorMessage.toLowerCase().includes('nao encontrada')) {
+    if (page !== 'videos' && errorMessage.toLowerCase().includes('nao encontrada')) {
       return <NotFoundPage onChangePage={onChangePage} />
     }
 
@@ -80,6 +83,7 @@ function EditorialPage({ page, onChangePage, onOpenArticle }) {
 
   const articles = content?.articles ?? []
   const featuredArticle = content?.featuredArticle ?? null
+  const featuredVideoEmbed = featuredArticle?.videoUrl ? resolveVideoEmbed(featuredArticle.videoUrl) : null
   const carouselPool = articles.slice(1)
   const visibleArticles = getCarouselSlice(
     carouselPool,
@@ -90,9 +94,17 @@ function EditorialPage({ page, onChangePage, onOpenArticle }) {
   if (!content || !featuredArticle) {
     return (
       <section className="editorial-placeholder">
-        <p className="story-kicker">Editoria sem publicacoes</p>
-        <h1>Ainda nao ha materias publicadas nessa editoria.</h1>
-        <p>Quando novas materias forem publicadas no backend, elas aparecerao aqui automaticamente.</p>
+        <p className="story-kicker">{page === 'videos' ? 'Videos indisponiveis' : 'Editoria sem publicacoes'}</p>
+        <h1>
+          {page === 'videos'
+            ? 'Ainda nao ha materias publicadas com video nesta pagina.'
+            : 'Ainda nao ha materias publicadas nessa editoria.'}
+        </h1>
+        <p>
+          {page === 'videos'
+            ? 'Assim que o backend devolver materias com video_url, elas passarao a aparecer aqui automaticamente.'
+            : 'Quando novas materias forem publicadas no backend, elas aparecerao aqui automaticamente.'}
+        </p>
       </section>
     )
   }
@@ -111,6 +123,39 @@ function EditorialPage({ page, onChangePage, onOpenArticle }) {
 
       <div className="editorial-page__grid">
         <article className="editorial-page__feature">
+          {page === 'videos' && featuredVideoEmbed?.kind === 'iframe' ? (
+            <div className="editorial-page__feature-video">
+              <iframe
+                src={featuredVideoEmbed.embedUrl}
+                title={featuredVideoEmbed.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          ) : null}
+
+          {page === 'videos' && featuredVideoEmbed?.kind === 'direct' ? (
+            <div className="editorial-page__feature-video">
+              <video controls preload="metadata" src={featuredVideoEmbed.embedUrl}>
+                Seu navegador nao conseguiu reproduzir este video.
+              </video>
+            </div>
+          ) : null}
+
+          {page === 'videos' && featuredVideoEmbed?.kind === 'external' ? (
+            <div className="editorial-page__feature-video editorial-page__feature-video--fallback">
+              <p>O video desta materia precisa ser aberto na origem.</p>
+              <a
+                className="primary-link editorial-page__feature-video-link"
+                href={featuredVideoEmbed.originalUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Abrir video
+              </a>
+            </div>
+          ) : null}
+
           {featuredArticle.imageUrl ? (
             <div className="editorial-page__feature-media">
               <img src={featuredArticle.imageUrl} alt={featuredArticle.title} />
@@ -199,6 +244,7 @@ function EditorialPage({ page, onChangePage, onOpenArticle }) {
                   <img src={article.imageUrl} alt={article.title} />
                 </div>
               ) : null}
+              {article.videoUrl ? <span className="editorial-page__story-badge">Video</span> : null}
               <span className="story-kicker">{article.label}</span>
               <h3>{article.title}</h3>
               <p>{article.excerpt}</p>

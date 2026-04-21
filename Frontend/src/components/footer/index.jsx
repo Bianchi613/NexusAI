@@ -87,16 +87,14 @@ function Footer({ onChangePage }) {
 
       <nav className="footer-nav" aria-label="Mapa do portal">
         {footerSections.map((section) => (
-          <a
-            href="/"
+          <button
+            className="footer-link-button"
             key={section}
-            onClick={(event) => {
-              event.preventDefault()
-              onChangePage(mapSectionToPage(section))
-            }}
+            type="button"
+            onClick={() => onChangePage(mapSectionToPage(section))}
           >
             {section}
-          </a>
+          </button>
         ))}
       </nav>
 
@@ -112,21 +110,18 @@ function Footer({ onChangePage }) {
       </div>
 
       <div className="footer-links">
-        <a href="/" onClick={(event) => event.preventDefault()}>
+        <button className="footer-link-button" type="button" onClick={() => onChangePage('terms-of-use')}>
           Termos de uso
-        </a>
-        <a href="/" onClick={(event) => event.preventDefault()}>
+        </button>
+        <button className="footer-link-button" type="button" onClick={() => onChangePage('privacy-policy')}>
           Politica de privacidade
-        </a>
-        <a href="/" onClick={(event) => event.preventDefault()}>
-          Acessibilidade
-        </a>
-        <a href="/" onClick={(event) => event.preventDefault()}>
+        </button>
+        <button className="footer-link-button" type="button" onClick={() => onChangePage('contato')}>
           Contato
-        </a>
-        <a href="/" onClick={(event) => event.preventDefault()}>
+        </button>
+        <button className="footer-link-button" type="button" onClick={() => onChangePage('about')}>
           Sobre o Nexus IA
-        </a>
+        </button>
       </div>
 
       <p className="copyright">

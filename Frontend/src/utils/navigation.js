@@ -10,7 +10,7 @@ const pageBySection = {
   'laboratorio ia': 'ciencia',
   videos: 'videos',
   ciencia: 'ciencia',
-  'sobre o nexus ia': 'home',
+  'sobre o nexus ia': 'about',
 }
 
 const pageTitles = {
@@ -26,6 +26,10 @@ const pageTitles = {
   videos: 'Videos',
   login: 'Entrar',
   register: 'Cadastro',
+  'terms-of-use': 'Termos de uso',
+  'privacy-policy': 'Politica de privacidade',
+  contato: 'Contato',
+  about: 'Sobre o Nexus IA',
 }
 
 export function normalizeSection(value = '') {

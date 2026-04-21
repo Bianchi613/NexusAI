@@ -1,22 +1,25 @@
 # Frontend Nexus IA
 
-Frontend em React + Vite para o portal editorial do Nexus IA.
+Frontend do portal editorial Nexus IA, construído em React + Vite com navegação por hash, integração com backend e páginas públicas organizadas por editoria, matéria, autenticação e conteúdo institucional.
 
-O projeto saiu do template padrao do Vite e hoje ja possui uma estrutura de portal com:
+O projeto já não está mais em uma fase apenas visual. Hoje ele consome APIs reais para:
 
-- home editorial
-- header, sidebar e footer integrados
-- editorias fixas por categoria
-- pagina de artigo com template estatico
-- tela de `not-found` para rotas removidas ou invalidas
-- camada mock de dados preparada para futura integracao com banco/API
+- home do portal
+- editorias por categoria
+- leitura de matéria dinâmica por `slug`
+- listagem de matérias publicadas
+- login, cadastro e sessão do usuário
+- busca lateral baseada nas matérias publicadas
+- página de vídeos derivada das matérias que possuem `video_url`
 
 ## Stack
 
 - React 19
 - Vite 8
-- CSS modular por componente/pagina
-- roteamento simples baseado em `window.location.hash`
+- JavaScript com JSX
+- CSS por componente/página
+- cliente HTTP próprio baseado em `fetch`
+- roteamento simples com `window.location.hash`
 
 ## Scripts
 
@@ -29,54 +32,77 @@ npm run preview
 npm run lint
 ```
 
-No Windows, se o PowerShell bloquear `npm.ps1`, use:
+Se o PowerShell bloquear `npm.ps1`, use:
 
 ```bash
 npm.cmd run dev
 ```
 
-## Estrutura atual
+## Configuração da API
 
-### Shell do app
+O frontend usa como base:
 
-O shell principal fica em [src/App.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/App.jsx:1).
+- `VITE_API_BASE_URL`
+
+Se a variável não for informada, o app usa por padrão:
+
+```text
+/api/v1
+```
+
+Em desenvolvimento, o Vite já está configurado para proxy:
+
+- `/api` -> `http://127.0.0.1:8000`
+
+Arquivo relacionado:
+
+- `vite.config.js`
+- `src/services/api-client.js`
+
+## Estrutura principal
+
+### Shell da aplicação
+
+O shell principal fica em `src/App.jsx`.
 
 Ele controla:
 
-- resolucao de rota por hash
-- abertura e fechamento da sidebar
-- rota das editorias
-- rota de materia individual
+- leitura da rota atual pelo hash
+- resolução de aliases de páginas
+- navegação entre home, editorias, auth e páginas institucionais
+- abertura da matéria dinâmica por `#materia/<slug>`
 - fallback para `not-found`
+- sincronização básica da sessão autenticada
 
-### Layout global
+### Componentes centrais
 
-Os estilos base e o visual geral do portal ficam em:
+- `src/components/header`: cabeçalho principal, navegação superior e retração da barra de editorias no scroll
+- `src/components/sidebar`: menu lateral com busca de matérias publicadas
+- `src/components/footer`: rodapé com navegação interna e links institucionais
+- `src/components/editorial-page`: template reutilizável para editorias
+- `src/components/article-page`: template da matéria dinâmica
+- `src/components/watch-strip`: faixa inferior de destaques/carrossel
+- `src/components/info-page`: bloco reutilizável para páginas institucionais
+- `src/components/brand-wordmark`: marca do portal
 
-- [src/index.css](/d:/Projetos/Nexus%20AI/Frontend/src/index.css:1)
-- [src/styles/app-shell.css](/d:/Projetos/Nexus%20AI/Frontend/src/styles/app-shell.css:1)
+### Camada de serviços
 
-O visual atual foi ajustado para uma linguagem mais editorial, com:
+- `src/services/api-client.js`: cliente HTTP base, tratamento de erro e raiz da API
+- `src/services/portal-api.js`: home, editorias, matérias publicadas, matéria por slug e vídeos
+- `src/services/auth-api.js`: login, cadastro, token em `localStorage` e `GET /auth/me`
 
-- fundo texturizado claro
-- tipografia serifada nos titulos
-- blocos com cara de jornal digital
-- melhor responsividade para header, home e editorias
+### Utilitários
 
-### Componentes principais
+- `src/utils/navigation.js`: mapeamento entre nomes visuais e páginas internas
+- `src/utils/video-embed.js`: normalização de links de vídeo para YouTube, Vimeo, arquivo direto ou link externo
 
-- [src/components/header](/d:/Projetos/Nexus%20AI/Frontend/src/components/header:1): cabecalho com navegacao principal
-- [src/components/sidebar](/d:/Projetos/Nexus%20AI/Frontend/src/components/sidebar:1): menu lateral mobile/overlay
-- [src/components/footer](/d:/Projetos/Nexus%20AI/Frontend/src/components/footer:1): rodape com mapa do portal
-- [src/components/watch-strip](/d:/Projetos/Nexus%20AI/Frontend/src/components/watch-strip:1): faixa escura de destaques
-- [src/components/brand-wordmark](/d:/Projetos/Nexus%20AI/Frontend/src/components/brand-wordmark:1): logo/wordmark
+## Rotas disponíveis
 
-## Navegacao e rotas
+O projeto usa hash routing simples. As principais rotas são:
 
-O frontend usa hash routing simples, sem React Router neste momento.
+### Públicas
 
-Rotas de editoria:
-
+- `#home`
 - `#noticias`
 - `#negocios`
 - `#tecnologia`
@@ -87,184 +113,202 @@ Rotas de editoria:
 - `#ciencia`
 - `#videos`
 
-Rotas de conta:
+### Matéria dinâmica
+
+- `#materia/<slug>`
+
+### Autenticação
 
 - `#login`
 - `#register`
 
-Rota de materia:
+### Institucionais
 
-- `#materia/<slug>`
+- `#terms-of-use`
+- `#privacy-policy`
+- `#contato`
+- `#about`
 
-Fallback:
+### Fallback
 
 - `#not-found`
 
-Se a rota for invalida ou se a pagina tiver sido removida, o app renderiza [src/pages/not-found/index.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/pages/not-found/index.jsx:1).
+Também existem aliases tratados no `App.jsx`, como:
 
-## Editorias fixas
+- `#inicio` -> `#home`
+- `#termos-de-uso` -> `#terms-of-use`
+- `#politica-de-privacidade` -> `#privacy-policy`
+- `#sobre-o-nexus-ia` -> `#about`
 
-As paginas de categoria foram convertidas para um modelo fixo e reutilizavel.
+## Páginas implementadas
 
-Em vez de cada pagina ter markup manual diferente, todas usam o componente:
+### Home
 
-- [src/components/editorial-page/index.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/components/editorial-page/index.jsx:1)
+A home já está integrada ao backend e consome `fetchHomeData()`.
 
-Esse componente monta:
+Ela renderiza:
 
-- cabecalho da editoria
-- materia principal em destaque
-- trilha lateral com recortes da editoria
-- carrossel de materias clicaveis
+- matéria principal
+- grid com últimas matérias
+- bloco de mais lidas
+- faixa inferior com destaques
+- editorias destacadas
 
-As paginas em `src/pages/*` apenas apontam para a editoria correta:
+Arquivo principal:
 
-- [src/pages/noticias/index.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/pages/noticias/index.jsx:1)
-- [src/pages/negocios/index.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/pages/negocios/index.jsx:1)
-- [src/pages/tecnologia/index.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/pages/tecnologia/index.jsx:1)
-- [src/pages/saude/index.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/pages/saude/index.jsx:1)
-- [src/pages/clima/index.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/pages/clima/index.jsx:1)
-- [src/pages/cultura/index.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/pages/cultura/index.jsx:1)
-- [src/pages/politica/index.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/pages/politica/index.jsx:1)
-- [src/pages/ciencia/index.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/pages/ciencia/index.jsx:1)
-- [src/pages/videos/index.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/pages/videos/index.jsx:1)
+- `src/pages/home/index.jsx`
 
-## Pagina de artigo
+### Editorias fixas
 
-Quando o usuario clica em uma materia dentro da editoria, o app abre uma pagina fixa de artigo.
+As páginas de categoria usam o mesmo template editorial, trocando apenas o `page`.
 
-O template fica em:
+Páginas atuais:
 
-- [src/components/article-page/index.jsx](/d:/Projetos/Nexus%20AI/Frontend/src/components/article-page/index.jsx:1)
+- `src/pages/noticias`
+- `src/pages/negocios`
+- `src/pages/tecnologia`
+- `src/pages/saude`
+- `src/pages/clima`
+- `src/pages/cultura`
+- `src/pages/politica`
+- `src/pages/ciencia`
+- `src/pages/videos`
 
-Esse template ja foi preparado para renderizar dados vindos do banco, incluindo:
+As editorias normais consomem:
+
+- `GET /categories/{slug}`
+
+A página `videos` não depende de uma categoria específica do banco. Ela é montada no frontend a partir de matérias publicadas com `video_url`.
+
+### Matéria dinâmica
+
+A leitura da matéria é feita por slug com:
+
+- `GET /articles/slug/{slug}`
+
+A tela renderiza:
 
 - categoria
-- titulo
+- título
 - resumo
 - autor
-- data
+- data formatada
 - tempo de leitura
-- local
-- corpo do texto
+- localização
+- imagem principal
+- vídeo incorporado quando existir
+- corpo em parágrafos
 - tags
-- materias relacionadas
+- matérias relacionadas
 
-Hoje ele recebe esses dados de um dataset mock, mas a estrutura ja esta pronta para trocar a origem por API/backend.
+Se o `slug` não existir ou a matéria não estiver mais disponível, a aplicação cai em `not-found`.
 
-## Camada de dados mock
+### Login e cadastro
 
-Os dados de conteudo foram centralizados em:
+As telas públicas de autenticação já estão conectadas ao backend:
 
-- [src/data/contentData.js](/d:/Projetos/Nexus%20AI/Frontend/src/data/contentData.js:1)
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /auth/me`
 
-Esse arquivo simula o banco de dados do portal e contem:
+O token de acesso fica salvo em `localStorage`.
 
-- configuracao visual/textual das editorias
-- lista de materias com `slug`
-- corpo das materias
-- tags e metadados
-- helpers para filtrar por categoria e buscar por slug
+Arquivos:
 
-Funcoes principais:
+- `src/pages/login/index.jsx`
+- `src/pages/register/index.jsx`
+- `src/services/auth-api.js`
 
-- `getCategoryContent(page)`
-- `getArticlesByPage(page)`
-- `getArticleBySlug(slug)`
-- `getRelatedArticles(article, limit)`
+### Páginas institucionais
 
-Ja os dados auxiliares do portal, como secoes do menu e blocos da home, continuam em:
+Já existem páginas próprias para:
 
-- [src/data/portalData.js](/d:/Projetos/Nexus%20AI/Frontend/src/data/portalData.js:1)
+- termos de uso
+- política de privacidade
+- contato
+- sobre o Nexus IA
 
-## Fluxo atual do portal
+Elas usam o componente reutilizável `info-page` e são acessadas pelo footer.
 
-O comportamento esperado hoje e:
+## Busca lateral
 
-1. O usuario entra na home.
-2. Navega para uma editoria fixa, como `#ciencia`.
-3. A editoria renderiza destaques e carrossel com base no dataset.
-4. Ao clicar em uma materia, o app vai para `#materia/<slug>`.
-5. A pagina de artigo renderiza o template fixo com os dados da materia.
-6. Se o `slug` nao existir, a aplicacao cai em `not-found`.
+A sidebar carrega matérias publicadas quando aberta e permite busca textual simples no frontend.
 
-## Mapeamento de navegacao
+A busca considera:
 
-O mapeamento entre nome de secao e rota fica em:
+- título
+- resumo
+- excerpt
+- categoria
+- label
 
-- [src/utils/navigation.js](/d:/Projetos/Nexus%20AI/Frontend/src/utils/navigation.js:1)
+Hoje o comportamento é:
 
-La ficam:
+- carrega `fetchPublishedArticles()`
+- filtra localmente no navegador
+- abre a matéria ao clicar no resultado
 
-- `mapSectionToPage`
-- `normalizeSection`
-- tabela de nomes para editorias do menu/footer
+Arquivo principal:
 
-Tambem foi tratado o caso de rotas antigas ou removidas, como `laboratorio-ia`, para evitar abrir paginas que nao existem mais.
+- `src/components/sidebar/index.jsx`
 
-## O que foi feito no frontend
+## Vídeos na plataforma
 
-- substituicao do README padrao do Vite por documentacao do projeto
-- revisao visual da home e do header
-- correcao de navegacao entre categorias
-- criacao das editorias `Ciencia`, `Clima` e `Videos`
-- transformacao de `not-found` em pagina real de rota removida
-- criacao de um modelo reutilizavel para editorias
-- criacao de um modelo reutilizavel para artigo
-- implementacao de rota `#materia/<slug>`
-- simulacao de conteudo vindo do banco por meio de `contentData.js`
+O frontend já trata matérias com vídeo.
 
-## Proximo passo sugerido
+Fluxo atual:
 
-O proximo passo natural e substituir a camada mock por dados reais do backend.
+1. A matéria publicada chega com `video_url`.
+2. `portal-api.js` mapeia esse campo.
+3. `video-embed.js` decide como incorporar o link.
+4. A matéria pode exibir:
+   - `iframe` para YouTube/Vimeo
+   - player nativo para arquivo direto
+   - fallback com link externo quando não houver embed suportado
+5. A página `#videos` reúne automaticamente as matérias publicadas que têm vídeo.
 
-As APIs que ja existem no backend para essa integracao sao:
+## Contratos de API usados pelo frontend
+
+Atualmente o frontend depende destes endpoints públicos:
 
 - `GET /api/v1/home`
-- `GET /api/v1/categories`
 - `GET /api/v1/categories/{slug}`
-- `GET /api/v1/categories/{slug}/articles`
 - `GET /api/v1/articles/published`
 - `GET /api/v1/articles/slug/{slug}`
-- `GET /api/v1/articles/slug/{slug}/related`
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `GET /api/v1/auth/me`
 
-As APIs do painel editorial, separadas da navegacao publica do portal, ficam em `review`:
+Observações importantes:
 
-- `GET /api/v1/review/articles`
-- `GET /api/v1/review/articles/pending`
-- `GET /api/v1/review/articles/{article_id}`
-- `POST /api/v1/review/articles`
-- `PUT /api/v1/review/articles/{article_id}`
-- `DELETE /api/v1/review/articles/{article_id}`
-- `PATCH /api/v1/review/articles/{article_id}/approve`
-- `PATCH /api/v1/review/articles/{article_id}/reject`
-- `GET /api/v1/review/categories`
-- `POST /api/v1/review/categories`
-- `PUT /api/v1/review/categories/{category_id}`
-- `DELETE /api/v1/review/categories/{category_id}`
-- `GET /api/v1/review/tags`
-- `POST /api/v1/review/tags`
-- `PUT /api/v1/review/tags/{tag_id}`
-- `DELETE /api/v1/review/tags/{tag_id}`
+- somente matérias publicadas devem aparecer no frontend
+- `Noticias` é o nome visual da editoria ligada à categoria geral
+- a página `videos` é derivada no frontend, com base nas matérias que já têm `video_url`
 
-Regras importantes dessa integracao:
+## Estado atual do frontend
 
-- so materias com status `publicada` devem aparecer no frontend
-- a editoria `Noticias` e um alias de apresentacao para a categoria `Geral` do banco
-- o slug da pagina de materia vem do backend e nao precisa existir como coluna no banco
+O que já está funcionando no código:
 
-Para isso, basta manter o contrato atual e trocar a origem:
+- navegação principal do portal
+- home integrada ao backend
+- editorias integradas ao backend
+- matéria dinâmica por `slug`
+- fallback para matéria/página inexistente
+- login e cadastro conectados ao backend
+- leitura da sessão com `auth/me`
+- busca lateral sobre matérias publicadas
+- renderização de imagem nas vitrines e matérias
+- suporte a vídeo em editoria e matéria
+- páginas institucionais acessíveis pelo footer
 
-- a home pode passar a usar `GET /api/v1/home`
-- `getArticlesByPage(page)` passa a chamar `GET /api/v1/categories/{slug}/articles`
-- `getArticleBySlug(slug)` passa a buscar `GET /api/v1/articles/slug/{slug}`
-- `getRelatedArticles(article)` passa a usar `GET /api/v1/articles/slug/{slug}/related`
+## Limitações e pendências conhecidas
 
-Assim, o layout permanece o mesmo e apenas a fonte de dados muda.
+- a busca ainda não é uma busca real de backend ou full-text; ela filtra localmente as matérias já carregadas
+- o bloco "Mais lidas" ainda não representa analytics real de leitura; hoje ele reaproveita a lista disponível no fluxo editorial
+- os ícones de redes sociais do footer ainda são visuais e não apontam para URLs reais
+- parte do texto institucional ainda é conteúdo-base e pode ser refinada depois
+- existe texto com codificação quebrada em alguns pontos do frontend, principalmente na sidebar, e isso ainda precisa de revisão
 
-## Observacao
+## Observação sobre validação
 
-Durante esta etapa, a validacao por build nao foi concluida no ambiente por restricao de execucao/sandbox no comando do Vite. A estrutura de codigo foi atualizada e organizada para essa proxima integracao.
+Neste ambiente, a validação final por `vite build` não foi concluída por restrição de execução local do processo do Vite (`spawn EPERM` em tentativas anteriores). O README foi atualizado com base no estado atual do código presente no repositório.

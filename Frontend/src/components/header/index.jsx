@@ -1,9 +1,42 @@
+import { useEffect, useState } from 'react'
 import './header.css'
 import BrandWordmark from '../brand-wordmark/index.jsx'
 import { topSections } from '../../data/portalData'
 import { mapSectionToPage } from '../../utils/navigation'
 
 function Header({ activePage, currentUser, onChangePage, onLogout, onOpenMenu }) {
+  const [isSectionNavCollapsed, setIsSectionNavCollapsed] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined
+    }
+
+    const collapseThreshold = 140
+    const expandThreshold = 88
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+
+      if (currentScrollY <= expandThreshold) {
+        setIsSectionNavCollapsed(false)
+        return
+      }
+
+      if (currentScrollY >= collapseThreshold) {
+        setIsSectionNavCollapsed(true)
+        return
+      }
+    }
+
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
+
   return (
     <header className="site-header">
       <div className="top-header">
@@ -68,7 +101,10 @@ function Header({ activePage, currentUser, onChangePage, onLogout, onOpenMenu })
         </div>
       </div>
 
-      <nav className="section-nav" aria-label="Secoes principais">
+      <nav
+        className={isSectionNavCollapsed ? 'section-nav is-collapsed' : 'section-nav'}
+        aria-label="Secoes principais"
+      >
         {topSections.map((section) => {
           const page = mapSectionToPage(section)
           const isActive = activePage === page

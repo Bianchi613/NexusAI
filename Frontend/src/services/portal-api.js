@@ -76,6 +76,11 @@ function mapArticleDetail(payload) {
     : payload.image_url
       ? [payload.image_url]
       : []
+  const videoUrls = Array.isArray(payload.video_urls)
+    ? payload.video_urls.filter(Boolean)
+    : payload.video_url
+      ? [payload.video_url]
+      : []
 
   return {
     id: payload.id,
@@ -92,6 +97,8 @@ function mapArticleDetail(payload) {
     location: payload.location ?? 'Brasil',
     imageUrl: imageUrls[0] ?? null,
     imageUrls,
+    videoUrl: videoUrls[0] ?? null,
+    videoUrls,
     body: payload.body_paragraphs ?? [],
     tags: (payload.tags ?? []).map((tag) => tag.name),
     relatedArticles: (payload.related_articles ?? []).map(mapArticleCard),
@@ -130,14 +137,58 @@ export async function fetchArticlePage(slug) {
 }
 
 export async function fetchPublishedArticles({ limit = 100, offset = 0 } = {}) {
-  const params = new URLSearchParams({
-    limit: String(limit),
-    offset: String(offset),
-  })
-  const payload = await request(`/articles/published?${params.toString()}`)
+  const normalizedLimit = Math.max(1, Number(limit) || 1)
+  const normalizedOffset = Math.max(0, Number(offset) || 0)
+  const pageSize = 50
+  const items = []
+  let currentOffset = normalizedOffset
+  let hasMore = false
+
+  while (items.length < normalizedLimit) {
+    const batchLimit = Math.min(pageSize, normalizedLimit - items.length)
+    const params = new URLSearchParams({
+      limit: String(batchLimit),
+      offset: String(currentOffset),
+    })
+    const payload = await request(`/articles/published?${params.toString()}`)
+    const batchItems = (payload.items ?? []).map(mapArticleCard)
+
+    items.push(...batchItems)
+    hasMore = payload.has_more ?? false
+
+    if (!hasMore || batchItems.length === 0) {
+      break
+    }
+
+    currentOffset += batchItems.length
+  }
+
   return {
-    items: (payload.items ?? []).map(mapArticleCard),
-    hasMore: payload.has_more ?? false,
+    items,
+    hasMore,
+  }
+}
+
+export async function fetchVideosPage() {
+  const { items } = await fetchPublishedArticles({ limit: 150 })
+  const videoArticles = items.filter((article) => article.videoUrl)
+  const featuredArticle = videoArticles[0] ?? null
+
+  return {
+    page: 'videos',
+    eyebrow: 'Videos',
+    title: 'Videos',
+    description:
+      'Materias publicadas que chegaram com link de video entram nesta pagina para concentrar entrevistas, cortes e cobertura em formato visual.',
+    railTitle: 'O que aparece aqui',
+    railItems: [
+      'Materias publicadas com video_url disponivel no backend',
+      'Entradas visuais vindas de diferentes editorias do portal',
+      'Leitura por materia com continuidade para a reportagem completa',
+    ],
+    featuredArticle,
+    articles: videoArticles,
+    hasMore: false,
   }
 }
 

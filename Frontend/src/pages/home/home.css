@@ -185,6 +185,20 @@
   font-weight: 700;
 }
 
+.most-read-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.most-read-button:hover {
+  color: var(--accent-strong);
+}
+
 .secondary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

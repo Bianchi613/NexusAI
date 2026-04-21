@@ -25,15 +25,18 @@
   gap: 18px;
 }
 
-.footer-nav a,
-.social-row a,
-.footer-links a {
+.footer-link-button,
+.social-row a {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
   color: var(--ink);
   text-decoration: none;
+  cursor: pointer;
 }
 
-.footer-nav a:hover,
-.footer-links a:hover {
+.footer-link-button:hover {
   color: var(--accent-strong);
 }
 

@@ -164,9 +164,25 @@ function HomePage({ activeSection, onChangePage, onOpenArticle }) {
               <p>Leitura recorrente com mais peso editorial.</p>
             </div>
             <ol className="most-read-list">
-              {(latestArticles.length > 0 ? latestArticles : mostRead).slice(0, 5).map((story) => (
-                <li key={story.title ?? story}>{story.title ?? story}</li>
-              ))}
+              {(latestArticles.length > 0 ? latestArticles : mostRead).slice(0, 5).map((story) => {
+                const isDynamicStory = typeof story === 'object' && story?.slug
+
+                return (
+                  <li key={story.title ?? story}>
+                    {isDynamicStory ? (
+                      <button
+                        className="most-read-button"
+                        type="button"
+                        onClick={() => onOpenArticle(story.slug)}
+                      >
+                        {story.title}
+                      </button>
+                    ) : (
+                      <span>{story.title ?? story}</span>
+                    )}
+                  </li>
+                )
+              })}
             </ol>
           </div>
         </aside>
